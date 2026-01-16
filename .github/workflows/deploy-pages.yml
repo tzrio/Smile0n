@@ -34,17 +34,18 @@ jobs:
       - name: Create .env for build
         shell: bash
         run: |
-          cat > .env <<EOF
-VITE_DATA_SOURCE=firebase
-VITE_FIREBASE_API_KEY=${{ secrets.VITE_FIREBASE_API_KEY }}
-VITE_FIREBASE_AUTH_DOMAIN=${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
-VITE_FIREBASE_PROJECT_ID=${{ secrets.VITE_FIREBASE_PROJECT_ID }}
-VITE_FIREBASE_STORAGE_BUCKET=${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }}
-VITE_FIREBASE_MESSAGING_SENDER_ID=${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
-VITE_FIREBASE_APP_ID=${{ secrets.VITE_FIREBASE_APP_ID }}
-VITE_FIREBASE_MEASUREMENT_ID=${{ secrets.VITE_FIREBASE_MEASUREMENT_ID }}
-VITE_FIREBASE_ENV=prod
-EOF
+          rm -f .env
+          {
+            printf '%s\n' "VITE_DATA_SOURCE=firebase"
+            printf '%s\n' "VITE_FIREBASE_API_KEY=${{ secrets.VITE_FIREBASE_API_KEY }}"
+            printf '%s\n' "VITE_FIREBASE_AUTH_DOMAIN=${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}"
+            printf '%s\n' "VITE_FIREBASE_PROJECT_ID=${{ secrets.VITE_FIREBASE_PROJECT_ID }}"
+            printf '%s\n' "VITE_FIREBASE_STORAGE_BUCKET=${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }}"
+            printf '%s\n' "VITE_FIREBASE_MESSAGING_SENDER_ID=${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}"
+            printf '%s\n' "VITE_FIREBASE_APP_ID=${{ secrets.VITE_FIREBASE_APP_ID }}"
+            printf '%s\n' "VITE_FIREBASE_MEASUREMENT_ID=${{ secrets.VITE_FIREBASE_MEASUREMENT_ID }}"
+            printf '%s\n' "VITE_FIREBASE_ENV=prod"
+          } > .env
 
       - name: Validate Firebase env for build
         shell: bash
