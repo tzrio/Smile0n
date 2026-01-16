@@ -1,0 +1,92 @@
+﻿rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function userDoc(uid) {
+      return get(/databases/$(database)/documents/users/$(uid));
+    }
+
+    function myUserDoc() {
+      return userDoc(request.auth.uid);
+    }
+
+    function myRole() {
+      // Prioritas: Custom Claims (lebih aman), fallback: users/{uid}.role
+      return signedIn()
+        ? (request.auth.token.role != null
+          ? request.auth.token.role
+          : (myUserDoc().exists() ? myUserDoc().data.role : null))
+        : null;
+    }
+
+    function isCEO() {
+      return myRole() == 'CEO';
+    }
+
+    function isStaff() {
+      return signedIn() && myUserDoc().exists() && (myRole() in ['CEO', 'CTO', 'CMO']);
+    }
+
+    // USERS (karyawan) = users/{uid}
+    match /users/{uid} {
+      allow read: if isStaff() || (signedIn() && uid == request.auth.uid);
+
+      // User membuat dokumen dirinya sendiri.
+      // NOTE: role default harus non-privilege (PENDING). CEO akan approve dengan mengubah role.
+      allow create: if signedIn()
+        && uid == request.auth.uid
+        && request.resource.data.role == 'PENDING';
+
+      // CEO boleh update siapa pun.
+      // User boleh update profil dirinya, tapi tidak boleh ubah email/role.
+      allow update: if isCEO()
+        || (signedIn()
+          && uid == request.auth.uid
+          && request.resource.data.email == resource.data.email
+          && request.resource.data.role == resource.data.role
+          && request.resource.data.diff(resource.data).changedKeys().hasOnly(['name', 'avatarDataUrl', 'position', 'updatedAt']));
+
+      allow delete: if isCEO();
+    }
+
+    // PRODUCTS
+    match /products/{id} {
+      allow read: if isStaff();
+      allow create, update: if isStaff();
+      // delete produk hanya CEO
+      allow delete: if isCEO();
+    }
+
+    // STOCK MOVEMENTS (audit log) - hanya create
+    match /stockMovements/{id} {
+      allow read: if isStaff();
+      allow create: if isStaff()
+        && request.resource.data.quantity is number
+        && request.resource.data.quantity > 0;
+      allow update, delete: if false;
+    }
+
+    // TRANSACTIONS (audit log) - hanya create
+    match /transactions/{id} {
+      allow read: if isStaff();
+      allow create: if isStaff()
+        && request.resource.data.amount is number
+        && request.resource.data.amount > 0;
+      allow update, delete: if false;
+    }
+
+    // SETTINGS
+    match /settings/{docId} {
+      allow read: if isStaff();
+      allow write: if isCEO();
+    }
+
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
