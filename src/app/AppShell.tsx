@@ -121,6 +121,31 @@ function LinkItem({
   )
 }
 
+function MobileNavItem({
+  to,
+  label,
+  icon,
+}: {
+  to: string
+  label: string
+  icon: IconName
+}) {
+  return (
+    <NavLink
+      to={to}
+      className={({ isActive }) =>
+        [
+          'flex min-w-[72px] flex-1 flex-col items-center justify-center gap-1 rounded-lg px-2 py-2 text-xs font-semibold transition',
+          isActive ? 'bg-white/10 text-white' : 'text-gray-200 hover:bg-white/10 hover:text-white',
+        ].join(' ')
+      }
+    >
+      <Icon name={icon} className="h-5 w-5" />
+      <span className="max-w-[84px] truncate text-[11px] leading-none">{label}</span>
+    </NavLink>
+  )
+}
+
 function initialsFromName(name: string) {
   const parts = name
     .split(' ')
@@ -166,23 +191,31 @@ export function AppShell() {
     <div className="min-h-screen bg-gray-100">
       <div className="mx-auto max-w-screen-2xl">
         <div className={["grid min-h-screen grid-cols-1", navWidthClass].join(' ')}>
-          <aside className={["bg-gray-900 py-5 text-gray-100 md:min-h-screen", collapsed ? 'px-2' : 'px-4'].join(' ')}>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                {!collapsed && (
+          <aside
+            className={[
+              // Desktop: keep sidebar fixed while page scrolls
+              'hidden bg-gray-900 py-5 text-gray-100 md:sticky md:top-0 md:block md:h-screen md:overflow-y-auto md:overscroll-contain',
+              collapsed ? 'px-2' : 'px-4',
+            ].join(' ')}
+          >
+            <div className={[
+              'flex items-center',
+              collapsed ? 'justify-center' : 'justify-between',
+            ].join(' ')}>
+              {!collapsed && (
+                <div className="flex items-center gap-3">
                   <img
                     src={logoUrl}
                     alt="Logo perusahaan"
                     className="h-9 w-9 rounded-md object-cover ring-1 ring-white/10"
                   />
-                )}
-                {!collapsed && (
                   <div>
                     <div className="text-sm font-semibold tracking-tight text-white">Smile0n Admin</div>
                     <div className="mt-1 text-xs text-gray-300">Jaya Selalu</div>
                   </div>
-                )}
-              </div>
+                </div>
+              )}
+
               <div className="flex items-center gap-2">
                 {!collapsed && (
                   <div className="rounded-full bg-white/10 px-2 py-1 text-xs font-semibold text-white">
@@ -202,7 +235,7 @@ export function AppShell() {
                       return next
                     })
                   }
-                  className="rounded-md bg-white/10 p-2 text-white hover:bg-white/15"
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-md bg-white/10 text-white hover:bg-white/15"
                   aria-label={collapsed ? 'Buka menu' : 'Tutup menu'}
                   title={collapsed ? 'Buka menu' : 'Tutup menu'}
                 >
@@ -266,11 +299,34 @@ export function AppShell() {
             </div>
           </aside>
 
-          <main className="p-4 md:p-8">
+          <main className="p-4 pb-24 md:p-8 md:pb-8">
             <div className="rounded-2xl bg-gray-100">
               <Outlet />
             </div>
           </main>
+        </div>
+
+        {/* Mobile bottom taskbar */}
+        <div className="fixed bottom-0 left-0 right-0 z-40 md:hidden">
+          <div className="mx-auto max-w-screen-2xl px-2 pb-2">
+            <div className="rounded-2xl bg-gray-900/95 p-2 text-gray-100 shadow-lg ring-1 ring-white/10 backdrop-blur">
+              <nav className="flex items-stretch gap-1 overflow-x-auto">
+                {menuItems.map((it) => (
+                  <MobileNavItem key={it.to} to={it.to} label={it.label} icon={it.icon} />
+                ))}
+                <button
+                  type="button"
+                  onClick={logout}
+                  className="flex min-w-[72px] flex-1 flex-col items-center justify-center gap-1 rounded-lg px-2 py-2 text-xs font-semibold text-gray-200 transition hover:bg-white/10 hover:text-white"
+                  aria-label="Logout"
+                  title="Logout"
+                >
+                  <Icon name="logout" className="h-5 w-5" />
+                  <span className="max-w-[84px] truncate text-[11px] leading-none">Logout</span>
+                </button>
+              </nav>
+            </div>
+          </div>
         </div>
       </div>
     </div>

@@ -36,14 +36,15 @@ jobs:
         run: |
           rm -f .env
 
-          # Optional: allow providing the whole .env content via a single secret/variable named SMILEON
+          # Optional: allow providing the whole .env content via a single secret/variable named SMILEON or SMILE0N
           # Example value:
           #   VITE_FIREBASE_API_KEY=...
           #   VITE_FIREBASE_AUTH_DOMAIN=...
           #   VITE_FIREBASE_PROJECT_ID=...
           #   VITE_FIREBASE_APP_ID=...
-          if [ -n "${{ secrets.SMILE0N || vars.SMILE0N }}" ]; then
-            printf '%s\n' "${{ secrets.SMILE0N || vars.SMILE0N }}" > .env
+          DOTENV_PAYLOAD="${{ secrets['SMILE0N'] || vars['SMILE0N'] || secrets.SMILEON || vars.SMILEON }}"
+          if [ -n "${DOTENV_PAYLOAD}" ]; then
+            printf '%s\n' "${DOTENV_PAYLOAD}" > .env
           fi
 
           add_if_missing() {
