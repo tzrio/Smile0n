@@ -77,3 +77,4 @@ Default penyimpanan memakai localStorage (mode `local`) supaya UI bisa jalan tan
 Lihat `.env.example` untuk konfigurasi `VITE_DATA_SOURCE` dan `VITE_API_BASE_URL`.
 
 Kontrak endpoint ada di `API_CONTRACT.md`.
+
