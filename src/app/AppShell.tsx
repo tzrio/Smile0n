@@ -110,7 +110,7 @@ function LinkItem({
           linkBase,
           'flex items-center gap-3',
           collapsed ? 'justify-center px-2' : 'px-3',
-          isActive ? 'bg-white/10 text-white' : 'text-gray-200 hover:bg-white/10 hover:text-white',
+          isActive ? 'bg-indigo-500/20 text-white' : 'text-gray-200 hover:bg-white/10 hover:text-white',
         ].join(' ')
       }
       title={collapsed ? label : undefined}
@@ -146,6 +146,36 @@ function MobileNavItem({
   )
 }
 
+function MobileSheetLink({
+  to,
+  label,
+  icon,
+  onSelect,
+}: {
+  to: string
+  label: string
+  icon: IconName
+  onSelect: () => void
+}) {
+  return (
+    <NavLink
+      to={to}
+      onClick={onSelect}
+      className={({ isActive }) =>
+        [
+          'flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold transition',
+          isActive ? 'bg-indigo-500/15 text-white' : 'text-gray-200 hover:bg-white/10 hover:text-white',
+        ].join(' ')
+      }
+    >
+      <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/10 ring-1 ring-white/10">
+        <Icon name={icon} className="h-5 w-5" />
+      </span>
+      <span className="min-w-0 flex-1 truncate">{label}</span>
+    </NavLink>
+  )
+}
+
 function initialsFromName(name: string) {
   const parts = name
     .split(' ')
@@ -172,6 +202,7 @@ export function AppShell() {
       return false
     }
   })
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const navWidthClass = collapsed ? 'md:grid-cols-[72px_1fr]' : 'md:grid-cols-[280px_1fr]'
   const menuItems = useMemo(
     () =>
@@ -187,8 +218,24 @@ export function AppShell() {
     []
   )
 
+  const primaryMobileItems = useMemo(() => {
+    const primary = new Set([
+      '/app/dashboard',
+      '/app/inventory',
+      '/app/production',
+      '/app/transactions',
+      '/app/profile',
+    ])
+    return menuItems.filter((m) => primary.has(m.to))
+  }, [menuItems])
+
+  const moreMobileItems = useMemo(() => {
+    const primary = new Set(primaryMobileItems.map((m) => m.to))
+    return menuItems.filter((m) => !primary.has(m.to))
+  }, [menuItems, primaryMobileItems])
+
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-gray-50 to-amber-50">
       <div className="mx-auto max-w-screen-2xl">
         <div className={["grid min-h-screen grid-cols-1", navWidthClass].join(' ')}>
           <aside
@@ -300,7 +347,7 @@ export function AppShell() {
           </aside>
 
           <main className="p-4 pb-24 md:p-8 md:pb-8">
-            <div className="rounded-2xl bg-gray-100">
+            <div className="rounded-2xl">
               <Outlet />
             </div>
           </main>
@@ -310,24 +357,93 @@ export function AppShell() {
         <div className="fixed bottom-0 left-0 right-0 z-40 md:hidden">
           <div className="mx-auto max-w-screen-2xl px-2 pb-2">
             <div className="rounded-2xl bg-gray-900/95 p-2 text-gray-100 shadow-lg ring-1 ring-white/10 backdrop-blur">
-              <nav className="flex items-stretch gap-1 overflow-x-auto">
-                {menuItems.map((it) => (
+              <nav className="flex items-stretch justify-between gap-1">
+                {primaryMobileItems.map((it) => (
                   <MobileNavItem key={it.to} to={it.to} label={it.label} icon={it.icon} />
                 ))}
                 <button
                   type="button"
-                  onClick={logout}
+                  onClick={() => setMobileMenuOpen(true)}
                   className="flex min-w-[72px] flex-1 flex-col items-center justify-center gap-1 rounded-lg px-2 py-2 text-xs font-semibold text-gray-200 transition hover:bg-white/10 hover:text-white"
-                  aria-label="Logout"
-                  title="Logout"
+                  aria-label="Menu"
+                  title="Menu"
                 >
-                  <Icon name="logout" className="h-5 w-5" />
-                  <span className="max-w-[84px] truncate text-[11px] leading-none">Logout</span>
+                  <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M4 6h16M4 12h16M4 18h16" />
+                  </svg>
+                  <span className="max-w-[84px] truncate text-[11px] leading-none">Menu</span>
                 </button>
               </nav>
             </div>
           </div>
         </div>
+
+        {/* Mobile Menu sheet */}
+        {mobileMenuOpen && (
+          <div className="fixed inset-0 z-50 md:hidden">
+            <button
+              type="button"
+              className="absolute inset-0 bg-black/40"
+              aria-label="Tutup menu"
+              onClick={() => setMobileMenuOpen(false)}
+            />
+            <div className="absolute bottom-0 left-0 right-0 px-2 pb-2">
+              <div className="mx-auto max-w-screen-2xl">
+                <div className="rounded-2xl bg-gray-900 p-3 text-gray-100 shadow-2xl ring-1 ring-white/10">
+                  <div className="flex items-center justify-between gap-3 px-1 py-1">
+                    <div className="flex items-center gap-3">
+                      <img
+                        src={logoUrl}
+                        alt="Logo perusahaan"
+                        className="h-9 w-9 rounded-xl object-cover ring-1 ring-white/10"
+                      />
+                      <div className="min-w-0">
+                        <div className="truncate text-sm font-semibold">Menu</div>
+                        <div className="truncate text-xs text-gray-300">{user?.name}</div>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-white/10 text-white hover:bg-white/15"
+                      aria-label="Tutup"
+                      title="Tutup"
+                    >
+                      <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M6 6l12 12M18 6L6 18" />
+                      </svg>
+                    </button>
+                  </div>
+
+                  <div className="mt-2 grid grid-cols-1 gap-1">
+                    {moreMobileItems.map((it) => (
+                      <MobileSheetLink
+                        key={it.to}
+                        to={it.to}
+                        label={it.label}
+                        icon={it.icon}
+                        onSelect={() => setMobileMenuOpen(false)}
+                      />
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMobileMenuOpen(false)
+                        logout()
+                      }}
+                      className="mt-1 flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-gray-200 transition hover:bg-white/10 hover:text-white"
+                    >
+                      <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/10 ring-1 ring-white/10">
+                        <Icon name="logout" className="h-5 w-5" />
+                      </span>
+                      <span className="min-w-0 flex-1 truncate">Logout</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

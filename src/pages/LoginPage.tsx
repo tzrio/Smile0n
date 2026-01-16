@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { Button } from '../components/Button'
 import { Input } from '../components/Input'
 import { useAuth } from '../auth/AuthContext'
+import { LogoLoading } from '../components/LogoLoading'
 
 export function LoginPage() {
   const { login, user } = useAuth()
@@ -48,6 +49,7 @@ export function LoginPage() {
 
   return (
     <div className="min-h-screen bg-gray-100">
+      <LogoLoading open={loading} label="Sedang login…" />
       <div className="mx-auto flex min-h-screen max-w-screen-2xl items-center justify-center p-4">
         <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-sm ring-1 ring-gray-200/70">
           <div>

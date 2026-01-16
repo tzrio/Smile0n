@@ -6,6 +6,7 @@ import { Button } from '../components/Button'
 import { Input } from '../components/Input'
 import { getFirebaseAuth, getFirestoreDb } from '../firebase/firebase'
 import { isoNow } from '../utils/date'
+import { LogoLoading } from '../components/LogoLoading'
 
 export function SignupPage() {
   const navigate = useNavigate()
@@ -99,6 +100,7 @@ export function SignupPage() {
 
   return (
     <div className="min-h-screen bg-gray-100">
+      <LogoLoading open={loading} label="Membuat akun…" />
       <div className="mx-auto flex min-h-screen max-w-screen-2xl items-center justify-center p-4">
         <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-sm ring-1 ring-gray-200/70">
           <div>
