@@ -35,17 +35,34 @@ jobs:
         shell: bash
         run: |
           rm -f .env
-          {
-            printf '%s\n' "VITE_DATA_SOURCE=firebase"
-            printf '%s\n' "VITE_FIREBASE_API_KEY=${{ secrets.VITE_FIREBASE_API_KEY || vars.VITE_FIREBASE_API_KEY }}"
-            printf '%s\n' "VITE_FIREBASE_AUTH_DOMAIN=${{ secrets.VITE_FIREBASE_AUTH_DOMAIN || vars.VITE_FIREBASE_AUTH_DOMAIN }}"
-            printf '%s\n' "VITE_FIREBASE_PROJECT_ID=${{ secrets.VITE_FIREBASE_PROJECT_ID || vars.VITE_FIREBASE_PROJECT_ID }}"
-            printf '%s\n' "VITE_FIREBASE_STORAGE_BUCKET=${{ secrets.VITE_FIREBASE_STORAGE_BUCKET || vars.VITE_FIREBASE_STORAGE_BUCKET }}"
-            printf '%s\n' "VITE_FIREBASE_MESSAGING_SENDER_ID=${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID || vars.VITE_FIREBASE_MESSAGING_SENDER_ID }}"
-            printf '%s\n' "VITE_FIREBASE_APP_ID=${{ secrets.VITE_FIREBASE_APP_ID || vars.VITE_FIREBASE_APP_ID }}"
-            printf '%s\n' "VITE_FIREBASE_MEASUREMENT_ID=${{ secrets.VITE_FIREBASE_MEASUREMENT_ID || vars.VITE_FIREBASE_MEASUREMENT_ID }}"
-            printf '%s\n' "VITE_FIREBASE_ENV=prod"
-          } > .env
+
+          # Optional: allow providing the whole .env content via a single secret/variable named SMILEON
+          # Example value:
+          #   VITE_FIREBASE_API_KEY=...
+          #   VITE_FIREBASE_AUTH_DOMAIN=...
+          #   VITE_FIREBASE_PROJECT_ID=...
+          #   VITE_FIREBASE_APP_ID=...
+          if [ -n "${{ secrets.SMILEON || vars.SMILEON }}" ]; then
+            printf '%s\n' "${{ secrets.SMILEON || vars.SMILEON }}" > .env
+          fi
+
+          add_if_missing() {
+            key="$1"
+            val="$2"
+            if [ ! -f .env ] || ! grep -qE "^${key}=" .env; then
+              printf '%s\n' "${key}=${val}" >> .env
+            fi
+          }
+
+          add_if_missing "VITE_DATA_SOURCE" "firebase"
+          add_if_missing "VITE_FIREBASE_API_KEY" "${{ secrets.VITE_FIREBASE_API_KEY || vars.VITE_FIREBASE_API_KEY }}"
+          add_if_missing "VITE_FIREBASE_AUTH_DOMAIN" "${{ secrets.VITE_FIREBASE_AUTH_DOMAIN || vars.VITE_FIREBASE_AUTH_DOMAIN }}"
+          add_if_missing "VITE_FIREBASE_PROJECT_ID" "${{ secrets.VITE_FIREBASE_PROJECT_ID || vars.VITE_FIREBASE_PROJECT_ID }}"
+          add_if_missing "VITE_FIREBASE_STORAGE_BUCKET" "${{ secrets.VITE_FIREBASE_STORAGE_BUCKET || vars.VITE_FIREBASE_STORAGE_BUCKET }}"
+          add_if_missing "VITE_FIREBASE_MESSAGING_SENDER_ID" "${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID || vars.VITE_FIREBASE_MESSAGING_SENDER_ID }}"
+          add_if_missing "VITE_FIREBASE_APP_ID" "${{ secrets.VITE_FIREBASE_APP_ID || vars.VITE_FIREBASE_APP_ID }}"
+          add_if_missing "VITE_FIREBASE_MEASUREMENT_ID" "${{ secrets.VITE_FIREBASE_MEASUREMENT_ID || vars.VITE_FIREBASE_MEASUREMENT_ID }}"
+          add_if_missing "VITE_FIREBASE_ENV" "prod"
 
       - name: Validate Firebase env for build
         shell: bash
