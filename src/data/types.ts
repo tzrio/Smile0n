@@ -27,17 +27,37 @@ export type StockMovement = {
   quantity: number
   date: string
   responsibleEmployeeId: string
+  sourceType?: 'MANUAL' | 'TRANSACTION' | 'PRODUCTION'
+  sourceId?: string
 }
 
 export type TransactionType = 'PURCHASE' | 'SALE'
+
+export type TransactionItem = {
+  productId: string
+  quantity: number
+  unitPrice: number
+}
 
 export type Transaction = {
   id: string
   type: TransactionType
   description: string
   amount: number
+  items?: TransactionItem[]
   date: string
   responsibleEmployeeId: string
+}
+
+export type Production = {
+  id: string
+  rawProductId: string
+  rawQuantity: number
+  finishedProductId: string
+  finishedQuantity: number
+  date: string
+  responsibleEmployeeId: string
+  notes?: string
 }
 
 export type AppSettings = {
@@ -49,5 +69,6 @@ export type AppData = {
   products: Product[]
   stockMovements: StockMovement[]
   transactions: Transaction[]
+  productions: Production[]
   settings: AppSettings
 }

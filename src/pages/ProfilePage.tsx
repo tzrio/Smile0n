@@ -4,6 +4,7 @@ import { Button } from '../components/Button'
 import { Card } from '../components/Card'
 import { Input } from '../components/Input'
 import { PageHeader } from '../components/PageHeader'
+import { useToast } from '../app/ToastContext'
 
 function initialsFromName(name: string) {
   const parts = name
@@ -19,6 +20,7 @@ function initialsFromName(name: string) {
 
 export function ProfilePage() {
   const { user, updateProfile, updatePassword } = useAuth()
+  const toast = useToast()
 
   const [name, setName] = useState(user?.name ?? '')
   const [avatarDataUrl, setAvatarDataUrl] = useState<string | undefined>(user?.avatarDataUrl)
@@ -78,8 +80,11 @@ export function ProfilePage() {
     try {
       await updateProfile({ name: nextName, avatarDataUrl })
       setSaved(true)
+      toast.success('Profil berhasil disimpan')
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Gagal menyimpan profil')
+      const msg = e instanceof Error ? e.message : 'Gagal menyimpan profil'
+      setError(msg)
+      toast.error(msg)
     }
   }
 
@@ -107,10 +112,14 @@ export function ProfilePage() {
       setNewPassword('')
       setConfirmPassword('')
       setPasswordSaved(true)
+      toast.success('Password berhasil diubah')
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Gagal mengubah password')
+      const msg = e instanceof Error ? e.message : 'Gagal mengubah password'
+      setError(msg)
+      toast.error(msg)
     }
   }
+
 
   return (
     <div className="space-y-6">
@@ -210,6 +219,7 @@ export function ProfilePage() {
           {passwordSaved && <div className="text-sm font-medium text-gray-700">Password berhasil diubah.</div>}
         </div>
       </Card>
+
     </div>
   )
 }

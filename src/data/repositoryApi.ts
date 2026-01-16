@@ -1,4 +1,4 @@
-import type { AppData, Employee, Product, ProductKind, StockMovement, Transaction } from './types'
+import type { AppData, Employee, Product, ProductKind, Production, StockMovement, Transaction } from './types'
 import { apiRepo } from './api/apiRepository'
 import { getApiSnapshot, mutateAndRefresh } from './api/apiStore'
 
@@ -65,6 +65,10 @@ export const repoApi = {
       void mutateAndRefresh(() => apiRepo.stockMovements.create(input))
       return { id: 'pending', ...input }
     },
+    remove(id: string) {
+      void id
+      throw new Error('API mode: hapus riwayat stok belum tersedia (butuh endpoint backend).')
+    },
   },
 
   transactions: {
@@ -74,6 +78,24 @@ export const repoApi = {
     create(input: Omit<Transaction, 'id'>): Transaction {
       void mutateAndRefresh(() => apiRepo.transactions.create(input))
       return { id: 'pending', ...input }
+    },
+    remove(id: string) {
+      void id
+      throw new Error('API mode: hapus riwayat transaksi belum tersedia (butuh endpoint backend).')
+    },
+  },
+
+  productions: {
+    list(): Production[] {
+      return getApiSnapshot().productions
+    },
+    create(input: Omit<Production, 'id'>): Production {
+      void input
+      throw new Error('API mode: fitur produksi belum tersedia (butuh endpoint backend).')
+    },
+    remove(id: string) {
+      void id
+      throw new Error('API mode: hapus riwayat produksi belum tersedia (butuh endpoint backend).')
     },
   },
 

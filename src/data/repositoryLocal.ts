@@ -1,4 +1,12 @@
-import type { AppData, Employee, Product, ProductKind, StockMovement, Transaction } from './types'
+import type {
+  AppData,
+  Employee,
+  Product,
+  ProductKind,
+  Production,
+  StockMovement,
+  Transaction,
+} from './types'
 import { loadAppData, saveAppData } from './storage'
 import { seedData } from './seed'
 import { createId } from '../utils/id'
@@ -23,6 +31,7 @@ function normalizeData(data: AppData): AppData {
     : []
   data.stockMovements = Array.isArray(data.stockMovements) ? data.stockMovements : []
   data.transactions = Array.isArray(data.transactions) ? data.transactions : []
+  data.productions = Array.isArray((data as any).productions) ? (data as any).productions : []
   data.settings = data.settings ?? { cashOpeningBalance: 0 }
   return data
 }
@@ -127,11 +136,24 @@ export const repoLocal = {
     },
     create(input: Omit<StockMovement, 'id'>): StockMovement {
       if (input.quantity <= 0) throw new Error('Qty harus > 0')
-      const m: StockMovement = { ...input, id: createId('stk') }
+      const m: StockMovement = {
+        ...input,
+        sourceType: input.sourceType ?? 'MANUAL',
+        id: createId('stk'),
+      }
       commit((d) => {
         d.stockMovements.unshift(m)
       })
       return m
+    },
+    remove(id: string) {
+      commit((d) => {
+        const before = d.stockMovements.length
+        d.stockMovements = d.stockMovements.filter((m) => m.id !== id)
+        if (d.stockMovements.length === before) {
+          throw new Error('Riwayat stok tidak ditemukan')
+        }
+      })
     },
   },
 
@@ -140,12 +162,114 @@ export const repoLocal = {
       return ensureData().transactions
     },
     create(input: Omit<Transaction, 'id'>): Transaction {
-      if (input.amount <= 0) throw new Error('Nominal harus > 0')
-      const t: Transaction = { ...input, id: createId('trx') }
+      const hasItems = Array.isArray(input.items) && input.items.length > 0
+
+      const transactionId = createId('trx')
+
+      if (hasItems) {
+        for (const it of input.items ?? []) {
+          if (!it.productId) throw new Error('Produk item transaksi wajib dipilih')
+          if (Number(it.quantity) <= 0) throw new Error('Qty item transaksi harus > 0')
+          if (Number(it.unitPrice) <= 0) throw new Error('Harga satuan item transaksi harus > 0')
+        }
+
+        const amount = (input.items ?? []).reduce((sum, it) => sum + Number(it.quantity) * Number(it.unitPrice), 0)
+        if (amount <= 0) throw new Error('Total transaksi harus > 0')
+
+        const t: Transaction = { ...input, items: input.items, amount, id: transactionId }
+
+        const movementType: StockMovement['type'] = input.type === 'SALE' ? 'OUT' : 'IN'
+        const movements: StockMovement[] = (input.items ?? []).map((it) => ({
+          id: createId('stk'),
+          productId: it.productId,
+          type: movementType,
+          quantity: Number(it.quantity),
+          date: input.date,
+          responsibleEmployeeId: input.responsibleEmployeeId,
+          sourceType: 'TRANSACTION',
+          sourceId: transactionId,
+        }))
+
+        commit((d) => {
+          d.transactions.unshift(t)
+          d.stockMovements.unshift(...movements)
+        })
+
+        return t
+      }
+
+      if (Number(input.amount) <= 0) throw new Error('Nominal transaksi harus > 0')
+      const t: Transaction = { ...input, items: undefined, id: transactionId }
       commit((d) => {
         d.transactions.unshift(t)
       })
       return t
+    },
+    remove(id: string) {
+      commit((d) => {
+        const before = d.transactions.length
+        d.transactions = d.transactions.filter((t) => t.id !== id)
+        if (d.transactions.length === before) {
+          throw new Error('Riwayat transaksi tidak ditemukan')
+        }
+        // Remove auto-generated stock movements from this transaction
+        d.stockMovements = d.stockMovements.filter((m) => !(m.sourceType === 'TRANSACTION' && m.sourceId === id))
+      })
+    },
+  },
+
+  productions: {
+    list(): Production[] {
+      return ensureData().productions
+    },
+    create(input: Omit<Production, 'id'>): Production {
+      if (!input.rawProductId) throw new Error('Pilih bahan mentah')
+      if (!input.finishedProductId) throw new Error('Pilih barang jadi')
+      if (input.rawProductId === input.finishedProductId) throw new Error('Bahan mentah dan barang jadi harus berbeda')
+      if (Number(input.rawQuantity) <= 0) throw new Error('Qty bahan mentah harus > 0')
+      if (Number(input.finishedQuantity) <= 0) throw new Error('Qty barang jadi harus > 0')
+      if (!input.responsibleEmployeeId) throw new Error('Pilih penanggung jawab')
+
+      const productionId = createId('pro')
+      const p: Production = { ...input, id: productionId }
+
+      const movements: StockMovement[] = [
+        {
+          id: createId('stk'),
+          productId: input.rawProductId,
+          type: 'OUT',
+          quantity: Number(input.rawQuantity),
+          date: input.date,
+          responsibleEmployeeId: input.responsibleEmployeeId,
+          sourceType: 'PRODUCTION',
+          sourceId: productionId,
+        },
+        {
+          id: createId('stk'),
+          productId: input.finishedProductId,
+          type: 'IN',
+          quantity: Number(input.finishedQuantity),
+          date: input.date,
+          responsibleEmployeeId: input.responsibleEmployeeId,
+          sourceType: 'PRODUCTION',
+          sourceId: productionId,
+        },
+      ]
+
+      commit((d) => {
+        d.productions.unshift(p)
+        d.stockMovements.unshift(...movements)
+      })
+
+      return p
+    },
+    remove(id: string) {
+      commit((d) => {
+        const before = d.productions.length
+        d.productions = d.productions.filter((p) => p.id !== id)
+        if (d.productions.length === before) throw new Error('Riwayat produksi tidak ditemukan')
+        d.stockMovements = d.stockMovements.filter((m) => !(m.sourceType === 'PRODUCTION' && m.sourceId === id))
+      })
     },
   },
 

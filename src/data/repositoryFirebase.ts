@@ -1,29 +1,52 @@
-import type { AppData, AppSettings, Employee, Product, StockMovement, Transaction } from './types'
-import { seedData } from './seed'
+import type {
+  AppData,
+  AppSettings,
+  Employee,
+  Product,
+  Production,
+  StockMovement,
+  Transaction,
+  TransactionItem,
+} from './types'
 import { createId } from '../utils/id'
 import { isoNow } from '../utils/date'
 import { getFirestoreDb } from '../firebase/firebase'
+import { getFirebaseAuth } from '../firebase/firebase'
 import {
   collection,
   deleteDoc,
   doc,
-  getDoc,
+  getDocs,
   onSnapshot,
   query,
   setDoc,
   updateDoc,
+  where,
+  writeBatch,
 } from 'firebase/firestore'
+import { onAuthStateChanged } from 'firebase/auth'
 
 const EVENT_NAME = 'wallDecorAdmin.data.changed'
 
 type Unsub = () => void
 
-let started = false
-let unsubs: Unsub[] = []
+let authWatcherStarted = false
+let unsubAuth: Unsub | null = null
+let unsubMyUserDoc: Unsub | null = null
+
+let dataStarted = false
+let dataUnsubs: Unsub[] = []
 
 let db: ReturnType<typeof getFirestoreDb> | null = null
 
-let snapshot: AppData = seedData
+let snapshot: AppData = {
+  employees: [],
+  products: [],
+  stockMovements: [],
+  transactions: [],
+  productions: [],
+  settings: { cashOpeningBalance: 0 },
+}
 
 function notify() {
   window.dispatchEvent(new Event(EVENT_NAME))
@@ -81,6 +104,8 @@ function mapStockMovement(id: string, data: any): StockMovement {
     quantity: Number(data?.quantity ?? 0),
     date: toIsoMaybe(data?.date) || isoNow(),
     responsibleEmployeeId: String(data?.responsibleEmployeeId ?? data?.responsibleUserId ?? ''),
+    sourceType: data?.sourceType === 'TRANSACTION' || data?.sourceType === 'PRODUCTION' ? data.sourceType : (data?.sourceType === 'MANUAL' ? 'MANUAL' : undefined),
+    sourceId: data?.sourceId ? String(data.sourceId) : undefined,
   }
 }
 
@@ -90,98 +115,223 @@ function mapTransaction(id: string, data: any): Transaction {
     type: data?.type === 'SALE' ? 'SALE' : 'PURCHASE',
     description: String(data?.description ?? ''),
     amount: Number(data?.amount ?? 0),
+    items: Array.isArray(data?.items)
+      ? data.items
+          .map((it: any) => ({
+            productId: String(it?.productId ?? ''),
+            quantity: Number(it?.quantity ?? 0),
+            unitPrice: Number(it?.unitPrice ?? 0),
+          }))
+          .filter((it: TransactionItem) => Boolean(it.productId))
+      : undefined,
     date: toIsoMaybe(data?.date) || isoNow(),
     responsibleEmployeeId: String(data?.responsibleEmployeeId ?? data?.responsibleUserId ?? ''),
   }
 }
 
-async function ensureSettingsDoc() {
-  const firestoreDb = (db ??= getFirestoreDb())
-  const ref = doc(firestoreDb, 'settings', 'app')
-  const snap = await getDoc(ref)
-  if (snap.exists()) return
-  const initial: AppSettings = { cashOpeningBalance: 0 }
-  await setDoc(ref, initial)
+function mapProduction(id: string, data: any): Production {
+  return {
+    id,
+    rawProductId: String(data?.rawProductId ?? ''),
+    rawQuantity: Number(data?.rawQuantity ?? 0),
+    finishedProductId: String(data?.finishedProductId ?? ''),
+    finishedQuantity: Number(data?.finishedQuantity ?? 0),
+    date: toIsoMaybe(data?.date) || isoNow(),
+    responsibleEmployeeId: String(data?.responsibleEmployeeId ?? data?.responsibleUserId ?? ''),
+    notes: data?.notes ? String(data.notes) : undefined,
+  }
 }
 
-function start() {
-  if (started) return
-  started = true
+function resetToEmpty() {
+  snapshot = {
+    employees: [],
+    products: [],
+    stockMovements: [],
+    transactions: [],
+    productions: [],
+    settings: { cashOpeningBalance: 0 },
+  }
+  notify()
+}
+
+function handleListenerError(scope: string, err: unknown) {
+  console.error(`Firestore listener error (${scope})`, err)
+
+  const message =
+    err && typeof err === 'object' && 'message' in err
+      ? String((err as any).message)
+      : 'Missing or insufficient permissions.'
+
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(
+      new CustomEvent('wallDecorAdmin.toast', {
+        detail: {
+          type: 'error',
+          message:
+            `Akses Firestore ditolak (${scope}). ${message} ` +
+            'Cek 2 hal: (1) Firestore Rules di Console sudah dipaste dari file firestore.rules lalu Publish, ' +
+            '(2) di collection users/{uid}, field role akun kamu harus CEO/CTO/CMO. Setelah itu refresh.',
+        },
+      })
+    )
+  }
+
+  // If a listener starts while logged out / role not staff, Firestore can error (permission-denied).
+  // Stop data listeners but keep auth watcher alive so we can retry after login / role update.
+  stopDataListeners()
+  resetToEmpty()
+}
+
+function isStaffRole(role: unknown): boolean {
+  return role === 'CEO' || role === 'CTO' || role === 'CMO'
+}
+
+function startDataListeners() {
+  if (dataStarted) return
+  dataStarted = true
 
   const firestoreDb = (db ??= getFirestoreDb())
-
-  void ensureSettingsDoc().catch(() => {
-    // ignore (rules might block in some configs)
-  })
 
   // Sinkron karyawan = users/{uid}
   const employeesRef = collection(firestoreDb, 'users')
   const productsRef = collection(firestoreDb, 'products')
   const stockRef = collection(firestoreDb, 'stockMovements')
   const trxRef = collection(firestoreDb, 'transactions')
+  const prodRef = collection(firestoreDb, 'productions')
   const settingsRef = doc(firestoreDb, 'settings', 'app')
 
-  const unsubEmployees = onSnapshot(query(employeesRef), (qs) => {
-    snapshot = {
-      ...snapshot,
-      employees: qs.docs.map((d) => mapEmployee(d.id, d.data())),
-    }
-    notify()
-  })
+  const unsubEmployees = onSnapshot(
+    query(employeesRef),
+    (qs) => {
+      snapshot = {
+        ...snapshot,
+        employees: qs.docs.map((d) => mapEmployee(d.id, d.data())),
+      }
+      notify()
+    },
+    (err) => handleListenerError('users', err)
+  )
 
-  const unsubProducts = onSnapshot(query(productsRef), (qs) => {
-    snapshot = {
-      ...snapshot,
-      products: qs.docs.map((d) => mapProduct(d.id, d.data())),
-    }
-    notify()
-  })
+  const unsubProducts = onSnapshot(
+    query(productsRef),
+    (qs) => {
+      snapshot = {
+        ...snapshot,
+        products: qs.docs.map((d) => mapProduct(d.id, d.data())),
+      }
+      notify()
+    },
+    (err) => handleListenerError('products', err)
+  )
 
-  const unsubStock = onSnapshot(query(stockRef), (qs) => {
-    snapshot = {
-      ...snapshot,
-      stockMovements: qs.docs.map((d) => mapStockMovement(d.id, d.data())),
-    }
-    notify()
-  })
+  const unsubStock = onSnapshot(
+    query(stockRef),
+    (qs) => {
+      snapshot = {
+        ...snapshot,
+        stockMovements: qs.docs.map((d) => mapStockMovement(d.id, d.data())),
+      }
+      notify()
+    },
+    (err) => handleListenerError('stockMovements', err)
+  )
 
-  const unsubTrx = onSnapshot(query(trxRef), (qs) => {
-    snapshot = {
-      ...snapshot,
-      transactions: qs.docs.map((d) => mapTransaction(d.id, d.data())),
-    }
-    notify()
-  })
+  const unsubTrx = onSnapshot(
+    query(trxRef),
+    (qs) => {
+      snapshot = {
+        ...snapshot,
+        transactions: qs.docs.map((d) => mapTransaction(d.id, d.data())),
+      }
+      notify()
+    },
+    (err) => handleListenerError('transactions', err)
+  )
 
-  const unsubSettings = onSnapshot(settingsRef, (ds) => {
-    const data = ds.data() as any
-    snapshot = {
-      ...snapshot,
-      settings: {
-        cashOpeningBalance: Number(data?.cashOpeningBalance ?? 0),
-      },
-    }
-    notify()
-  })
+  const unsubProd = onSnapshot(
+    query(prodRef),
+    (qs) => {
+      snapshot = {
+        ...snapshot,
+        productions: qs.docs.map((d) => mapProduction(d.id, d.data())),
+      }
+      notify()
+    },
+    (err) => handleListenerError('productions', err)
+  )
 
-  unsubs = [unsubEmployees, unsubProducts, unsubStock, unsubTrx, unsubSettings]
+  const unsubSettings = onSnapshot(
+    settingsRef,
+    (ds) => {
+      const data = ds.data() as any
+      snapshot = {
+        ...snapshot,
+        settings: {
+          cashOpeningBalance: Number(data?.cashOpeningBalance ?? 0),
+        },
+      }
+      notify()
+    },
+    (err) => handleListenerError('settings/app', err)
+  )
+
+  dataUnsubs = [unsubEmployees, unsubProducts, unsubStock, unsubTrx, unsubProd, unsubSettings]
 }
 
-function stop() {
-  for (const u of unsubs) u()
-  unsubs = []
-  started = false
+function stopDataListeners() {
+  for (const u of dataUnsubs) u()
+  dataUnsubs = []
+  dataStarted = false
+}
+
+function startAuthWatcher() {
+  if (authWatcherStarted) return
+  authWatcherStarted = true
+
+  const auth = getFirebaseAuth()
+  const firestoreDb = (db ??= getFirestoreDb())
+
+  unsubAuth = onAuthStateChanged(auth, (fbUser) => {
+    if (unsubMyUserDoc) {
+      unsubMyUserDoc()
+      unsubMyUserDoc = null
+    }
+
+    if (!fbUser) {
+      stopDataListeners()
+      resetToEmpty()
+      return
+    }
+
+    const myRef = doc(firestoreDb, 'users', fbUser.uid)
+    unsubMyUserDoc = onSnapshot(
+      myRef,
+      (ds) => {
+        const role = (ds.data() as any)?.role
+        if (isStaffRole(role)) {
+          startDataListeners()
+        } else {
+          stopDataListeners()
+          resetToEmpty()
+        }
+      },
+      (err) => handleListenerError('users/myProfile', err)
+    )
+  })
 }
 
 if (typeof window !== 'undefined') {
   window.addEventListener('beforeunload', () => {
-    stop()
+    stopDataListeners()
+    if (unsubMyUserDoc) unsubMyUserDoc()
+    if (unsubAuth) unsubAuth()
   })
 }
 
 export const repoFirebase = {
   init() {
-    start()
+    // Start auth watcher first; data listeners will start automatically when role is staff.
+    startAuthWatcher()
   },
 
   getAll(): AppData {
@@ -198,12 +348,10 @@ export const repoFirebase = {
         'Di mode Firebase, penambahan karyawan/user harus lewat Firebase Auth (Console) atau Cloud Function (lebih aman).'
       )
     },
-    update(id: string, patch: Partial<Omit<Employee, 'id' | 'createdAt'>>): Employee {
+    async update(id: string, patch: Partial<Omit<Employee, 'id' | 'createdAt'>>): Promise<Employee> {
       const firestoreDb = (db ??= getFirestoreDb())
       const nextUpdatedAt = isoNow()
-      void updateDoc(doc(firestoreDb, 'users', id), { ...patch, updatedAt: nextUpdatedAt } as any).catch((err) => {
-        console.error('Failed to update employee', err)
-      })
+      await updateDoc(doc(firestoreDb, 'users', id), { ...patch, updatedAt: nextUpdatedAt } as any)
       const current = snapshot.employees.find((x) => x.id === id)
       if (!current) throw new Error('Karyawan tidak ditemukan')
       return { ...current, ...patch, updatedAt: nextUpdatedAt }
@@ -214,7 +362,7 @@ export const repoFirebase = {
     list(): Product[] {
       return snapshot.products
     },
-    create(input: { name: string; category: string; kind: Product['kind'] }): Product {
+    async create(input: { name: string; category: string; kind: Product['kind'] }): Promise<Product> {
       const firestoreDb = (db ??= getFirestoreDb())
       const now = isoNow()
       const id = createId('prd')
@@ -226,26 +374,20 @@ export const repoFirebase = {
         createdAt: now,
         updatedAt: now,
       }
-      void setDoc(doc(firestoreDb, 'products', id), p).catch((err) => {
-        console.error('Failed to create product', err)
-      })
+      await setDoc(doc(firestoreDb, 'products', id), p)
       return p
     },
-    update(id: string, patch: Partial<Omit<Product, 'id' | 'createdAt'>>): Product {
+    async update(id: string, patch: Partial<Omit<Product, 'id' | 'createdAt'>>): Promise<Product> {
       const firestoreDb = (db ??= getFirestoreDb())
       const nextUpdatedAt = isoNow()
-      void updateDoc(doc(firestoreDb, 'products', id), { ...patch, updatedAt: nextUpdatedAt } as any).catch((err) => {
-        console.error('Failed to update product', err)
-      })
+      await updateDoc(doc(firestoreDb, 'products', id), { ...patch, updatedAt: nextUpdatedAt } as any)
       const current = snapshot.products.find((x) => x.id === id)
       if (!current) throw new Error('Produk tidak ditemukan')
       return { ...current, ...patch, updatedAt: nextUpdatedAt }
     },
-    remove(id: string): void {
+    async remove(id: string): Promise<void> {
       const firestoreDb = (db ??= getFirestoreDb())
-      void deleteDoc(doc(firestoreDb, 'products', id)).catch((err) => {
-        console.error('Failed to delete product', err)
-      })
+      await deleteDoc(doc(firestoreDb, 'products', id))
       // related stockMovements are left as-is in Firestore (log/audit). UI will show productId fallback.
     },
   },
@@ -254,15 +396,17 @@ export const repoFirebase = {
     list(): StockMovement[] {
       return snapshot.stockMovements
     },
-    create(input: Omit<StockMovement, 'id'>): StockMovement {
+    async create(input: Omit<StockMovement, 'id'>): Promise<StockMovement> {
       const firestoreDb = (db ??= getFirestoreDb())
       if (input.quantity <= 0) throw new Error('Qty harus > 0')
       const id = createId('stk')
-      const m: StockMovement = { ...input, id }
-      void setDoc(doc(firestoreDb, 'stockMovements', id), m).catch((err) => {
-        console.error('Failed to create stock movement', err)
-      })
+      const m: StockMovement = { ...input, sourceType: input.sourceType ?? 'MANUAL', id }
+      await setDoc(doc(firestoreDb, 'stockMovements', id), m)
       return m
+    },
+    async remove(id: string): Promise<void> {
+      const firestoreDb = (db ??= getFirestoreDb())
+      await deleteDoc(doc(firestoreDb, 'stockMovements', id))
     },
   },
 
@@ -270,24 +414,135 @@ export const repoFirebase = {
     list(): Transaction[] {
       return snapshot.transactions
     },
-    create(input: Omit<Transaction, 'id'>): Transaction {
+    async create(input: Omit<Transaction, 'id'>): Promise<Transaction> {
       const firestoreDb = (db ??= getFirestoreDb())
-      if (input.amount <= 0) throw new Error('Nominal harus > 0')
-      const id = createId('trx')
-      const t: Transaction = { ...input, id }
-      void setDoc(doc(firestoreDb, 'transactions', id), t).catch((err) => {
-        console.error('Failed to create transaction', err)
-      })
+      const transactionId = createId('trx')
+      const hasItems = Array.isArray(input.items) && input.items.length > 0
+
+      if (hasItems) {
+        for (const it of input.items ?? []) {
+          if (!it.productId) throw new Error('Produk item transaksi wajib dipilih')
+          if (Number(it.quantity) <= 0) throw new Error('Qty item transaksi harus > 0')
+          if (Number(it.unitPrice) <= 0) throw new Error('Harga satuan item transaksi harus > 0')
+        }
+
+        const amount = (input.items ?? []).reduce((sum, it) => sum + Number(it.quantity) * Number(it.unitPrice), 0)
+        if (amount <= 0) throw new Error('Total transaksi harus > 0')
+
+        const t: Transaction = { ...input, items: input.items, amount, id: transactionId }
+
+        const movementType: StockMovement['type'] = input.type === 'SALE' ? 'OUT' : 'IN'
+        const batch = writeBatch(firestoreDb)
+
+        batch.set(doc(firestoreDb, 'transactions', transactionId), t)
+
+        for (const it of input.items ?? []) {
+          const movementId = createId('stk')
+          const m: StockMovement = {
+            id: movementId,
+            productId: it.productId,
+            type: movementType,
+            quantity: Number(it.quantity),
+            date: input.date,
+            responsibleEmployeeId: input.responsibleEmployeeId,
+            sourceType: 'TRANSACTION',
+            sourceId: transactionId,
+          }
+          batch.set(doc(firestoreDb, 'stockMovements', movementId), m)
+        }
+
+        await batch.commit()
+        return t
+      }
+
+      if (Number(input.amount) <= 0) throw new Error('Nominal transaksi harus > 0')
+      const t: Transaction = { ...input, items: undefined, id: transactionId }
+      await setDoc(doc(firestoreDb, 'transactions', transactionId), t)
       return t
+    },
+    async remove(id: string): Promise<void> {
+      const firestoreDb = (db ??= getFirestoreDb())
+      // Cascade delete stock movements created from this transaction
+      const q = query(
+        collection(firestoreDb, 'stockMovements'),
+        where('sourceType', '==', 'TRANSACTION'),
+        where('sourceId', '==', id)
+      )
+      const snap = await getDocs(q)
+      const batch = writeBatch(firestoreDb)
+      for (const d of snap.docs) batch.delete(d.ref)
+      batch.delete(doc(firestoreDb, 'transactions', id))
+      await batch.commit()
+    },
+  },
+
+  productions: {
+    list(): Production[] {
+      return snapshot.productions
+    },
+    async create(input: Omit<Production, 'id'>): Promise<Production> {
+      const firestoreDb = (db ??= getFirestoreDb())
+      if (!input.rawProductId) throw new Error('Pilih bahan mentah')
+      if (!input.finishedProductId) throw new Error('Pilih barang jadi')
+      if (input.rawProductId === input.finishedProductId) throw new Error('Bahan mentah dan barang jadi harus berbeda')
+      if (Number(input.rawQuantity) <= 0) throw new Error('Qty bahan mentah harus > 0')
+      if (Number(input.finishedQuantity) <= 0) throw new Error('Qty barang jadi harus > 0')
+      if (!input.responsibleEmployeeId) throw new Error('Pilih penanggung jawab')
+
+      const productionId = createId('pro')
+      const p: Production = { ...input, id: productionId }
+
+      const batch = writeBatch(firestoreDb)
+      batch.set(doc(firestoreDb, 'productions', productionId), p)
+
+      const outId = createId('stk')
+      const inId = createId('stk')
+      const out: StockMovement = {
+        id: outId,
+        productId: input.rawProductId,
+        type: 'OUT',
+        quantity: Number(input.rawQuantity),
+        date: input.date,
+        responsibleEmployeeId: input.responsibleEmployeeId,
+        sourceType: 'PRODUCTION',
+        sourceId: productionId,
+      }
+      const inn: StockMovement = {
+        id: inId,
+        productId: input.finishedProductId,
+        type: 'IN',
+        quantity: Number(input.finishedQuantity),
+        date: input.date,
+        responsibleEmployeeId: input.responsibleEmployeeId,
+        sourceType: 'PRODUCTION',
+        sourceId: productionId,
+      }
+
+      batch.set(doc(firestoreDb, 'stockMovements', outId), out)
+      batch.set(doc(firestoreDb, 'stockMovements', inId), inn)
+
+      await batch.commit()
+      return p
+    },
+    async remove(id: string): Promise<void> {
+      const firestoreDb = (db ??= getFirestoreDb())
+      const q = query(
+        collection(firestoreDb, 'stockMovements'),
+        where('sourceType', '==', 'PRODUCTION'),
+        where('sourceId', '==', id)
+      )
+      const snap = await getDocs(q)
+      const batch = writeBatch(firestoreDb)
+      for (const d of snap.docs) batch.delete(d.ref)
+      batch.delete(doc(firestoreDb, 'productions', id))
+      await batch.commit()
     },
   },
 
   settings: {
-    setCashOpeningBalance(value: number) {
+    async setCashOpeningBalance(value: number) {
       const firestoreDb = (db ??= getFirestoreDb())
-      void setDoc(doc(firestoreDb, 'settings', 'app'), { cashOpeningBalance: value }, { merge: true }).catch((err) => {
-        console.error('Failed to set cash opening balance', err)
-      })
+      await setDoc(doc(firestoreDb, 'settings', 'app'), { cashOpeningBalance: value } as AppSettings, { merge: true })
     },
   },
 }

@@ -44,6 +44,7 @@ export const seedData: AppData = {
   ],
   stockMovements: [],
   transactions: [],
+  productions: [],
   settings: {
     cashOpeningBalance: 0,
   },

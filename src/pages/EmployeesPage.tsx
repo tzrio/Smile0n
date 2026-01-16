@@ -11,10 +11,12 @@ import { useAppData } from '../data/useAppData'
 import { doc, updateDoc } from 'firebase/firestore'
 import { getFirestoreDb } from '../firebase/firebase'
 import { isoNow } from '../utils/date'
+import { useToast } from '../app/ToastContext'
 
 export function EmployeesPage() {
   const data = useAppData()
   const auth = useAuth()
+  const toast = useToast()
   const isFirebaseMode = useMemo(() => {
     const raw = ((import.meta as any).env?.VITE_DATA_SOURCE as string | undefined) ?? 'local'
     return raw === 'firebase'
@@ -23,7 +25,8 @@ export function EmployeesPage() {
   const canCreateLocal = auth.hasRole(['CEO']) && !isFirebaseMode
   // Spark plan flow: CEO approves users by updating users/{uid}.role in Firestore.
   // (No Cloud Functions / custom claims required.)
-  const canManageRolesFirebase = auth.hasRole(['CEO']) && isFirebaseMode
+  const canManageEmployeesFirebase = auth.hasRole(['CEO']) && isFirebaseMode
+  const canEditEmployeePositionLocal = auth.hasRole(['CEO']) && !isFirebaseMode
 
   const [name, setName] = useState('')
   const [position, setPosition] = useState('')
@@ -33,7 +36,8 @@ export function EmployeesPage() {
   const employees = useMemo(() => data.employees, [data.employees])
 
   const [roleEdits, setRoleEdits] = useState<Record<string, 'CEO' | 'CTO' | 'CMO' | 'PENDING'>>({})
-  const [roleLoading, setRoleLoading] = useState<Record<string, boolean>>({})
+  const [positionEdits, setPositionEdits] = useState<Record<string, string>>({})
+  const [rowLoading, setRowLoading] = useState<Record<string, boolean>>({})
 
   function addEmployee() {
     setError(null)
@@ -56,34 +60,67 @@ export function EmployeesPage() {
     }
   }
 
-  async function saveRole(uid: string) {
+  async function saveEmployee(uid: string) {
     setError(null)
     setSaved(false)
-    if (!canManageRolesFirebase) {
-      setError('Hanya CEO yang bisa mengubah role')
-      return
-    }
-
-    if (auth.user?.id === uid) {
-      setError('Demi keamanan, ubah role akun sendiri lewat Firebase Console saja.')
+    if (!canManageEmployeesFirebase) {
+      setError('Hanya CEO yang bisa mengubah data karyawan')
       return
     }
 
     const nextRole = roleEdits[uid]
-    if (!nextRole) {
-      setError('Role belum dipilih')
+    const nextPosition = (positionEdits[uid] ?? '').trim()
+
+    if (nextRole && auth.user?.id === uid) {
+      setError('Demi keamanan, ubah role akun sendiri lewat Firebase Console saja.')
       return
     }
 
-    setRoleLoading((m) => ({ ...m, [uid]: true }))
+    if (!nextRole && !nextPosition) {
+      setError('Tidak ada perubahan untuk disimpan')
+      return
+    }
+
+    setRowLoading((m) => ({ ...m, [uid]: true }))
     try {
       const db = getFirestoreDb()
-      await updateDoc(doc(db, 'users', uid), { role: nextRole, updatedAt: isoNow() } as any)
+      const patch: any = { updatedAt: isoNow() }
+      if (nextRole) patch.role = nextRole
+      if (nextPosition) patch.position = nextPosition
+      await updateDoc(doc(db, 'users', uid), patch)
       setSaved(true)
+      toast.success('Data karyawan berhasil disimpan')
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Gagal mengubah role')
+      const msg = e instanceof Error ? e.message : 'Gagal menyimpan data karyawan'
+      setError(msg)
+      toast.error(msg)
     } finally {
-      setRoleLoading((m) => ({ ...m, [uid]: false }))
+      setRowLoading((m) => ({ ...m, [uid]: false }))
+    }
+  }
+
+  function savePositionLocal(id: string) {
+    setError(null)
+    setSaved(false)
+    if (!canEditEmployeePositionLocal) {
+      setError('Hanya CEO yang bisa mengubah jabatan')
+      return
+    }
+
+    const nextPosition = (positionEdits[id] ?? '').trim()
+    if (!nextPosition) {
+      setError('Jabatan wajib diisi')
+      return
+    }
+
+    try {
+      ;(repo as any).employees.update(id, { position: nextPosition })
+      setSaved(true)
+      toast.success('Jabatan berhasil disimpan')
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Gagal menyimpan jabatan'
+      setError(msg)
+      toast.error(msg)
     }
   }
 
@@ -154,13 +191,31 @@ export function EmployeesPage() {
               ? auth.hasRole(['CEO'])
                 ? ['Nama', 'Jabatan', 'ID', 'Role', 'Aksi']
                 : ['Nama', 'Jabatan', 'ID', 'Role']
-              : ['Nama', 'Jabatan', 'ID']
+              : canEditEmployeePositionLocal
+                ? ['Nama', 'Jabatan', 'ID', 'Aksi']
+                : ['Nama', 'Jabatan', 'ID']
           }
         >
           {employees.map((e) => (
             <tr key={e.id} className="hover:bg-gray-50">
               <td className="px-5 py-3 text-gray-900">{e.name}</td>
-              <td className="px-5 py-3 text-gray-700">{e.position}</td>
+              <td className="px-5 py-3 text-gray-700">
+                {isFirebaseMode && auth.hasRole(['CEO']) ? (
+                  <Input
+                    value={positionEdits[e.id] ?? e.position}
+                    onChange={(ev) => setPositionEdits((m) => ({ ...m, [e.id]: ev.target.value }))}
+                    placeholder="Jabatan"
+                  />
+                ) : !isFirebaseMode && canEditEmployeePositionLocal ? (
+                  <Input
+                    value={positionEdits[e.id] ?? e.position}
+                    onChange={(ev) => setPositionEdits((m) => ({ ...m, [e.id]: ev.target.value }))}
+                    placeholder="Jabatan"
+                  />
+                ) : (
+                  e.position
+                )}
+              </td>
               <td className="px-5 py-3 font-mono text-xs text-gray-600">{e.id}</td>
 
               {isFirebaseMode && (
@@ -186,14 +241,22 @@ export function EmployeesPage() {
                       <Button
                         type="button"
                         className="px-2 py-1 text-xs"
-                        onClick={() => void saveRole(e.id)}
-                        disabled={!!roleLoading[e.id]}
+                        onClick={() => void saveEmployee(e.id)}
+                        disabled={!!rowLoading[e.id]}
                       >
-                        {roleLoading[e.id] ? '...' : 'Simpan'}
+                        {rowLoading[e.id] ? '...' : 'Simpan'}
                       </Button>
                     </td>
                   )}
                 </>
+              )}
+
+              {!isFirebaseMode && canEditEmployeePositionLocal && (
+                <td className="px-5 py-3">
+                  <Button type="button" className="px-2 py-1 text-xs" onClick={() => savePositionLocal(e.id)}>
+                    Simpan
+                  </Button>
+                </td>
               )}
             </tr>
           ))}

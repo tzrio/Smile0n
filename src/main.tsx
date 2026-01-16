@@ -5,15 +5,21 @@ import './index.css'
 import App from './App.tsx'
 import { AuthProvider } from './auth/AuthContext'
 import { ErrorBoundary } from './app/ErrorBoundary'
+import { FirebaseConfigGate } from './app/FirebaseConfigGate'
+import { ToastProvider } from './app/ToastContext'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <HashRouter>
-      <AuthProvider>
-        <ErrorBoundary>
-          <App />
-        </ErrorBoundary>
-      </AuthProvider>
-    </HashRouter>
+    <ToastProvider>
+      <FirebaseConfigGate>
+        <HashRouter>
+          <AuthProvider>
+            <ErrorBoundary>
+              <App />
+            </ErrorBoundary>
+          </AuthProvider>
+        </HashRouter>
+      </FirebaseConfigGate>
+    </ToastProvider>
   </StrictMode>,
 )

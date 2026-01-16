@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react'
 import {
   EmailAuthProvider,
+  browserSessionPersistence,
+  setPersistence,
   onAuthStateChanged,
   reauthenticateWithCredential,
   signInWithEmailAndPassword,
@@ -118,6 +120,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const auth = getFirebaseAuth()
     const db = getFirestoreDb()
     let unsubProfile: null | (() => void) = null
+
+    // Dev UX: When opening localhost in a new tab/session, start from logged-out state.
+    // This avoids Firebase Auth persistence keeping you logged in across restarts.
+    const isDev = Boolean((import.meta as any).env?.DEV)
+    const isLocalhost =
+      typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+    const AUTO_LOGOUT_KEY = 'wallDecorAdmin.dev.autoLogoutOncePerSession.v1'
+
+    if (isDev && isLocalhost) {
+      try {
+        // Use session persistence so a full browser restart doesn't keep auth.
+        void setPersistence(auth, browserSessionPersistence)
+      } catch {
+        // ignore
+      }
+
+      try {
+        if (!sessionStorage.getItem(AUTO_LOGOUT_KEY)) {
+          sessionStorage.setItem(AUTO_LOGOUT_KEY, '1')
+          void signOut(auth)
+          setUser(null)
+        }
+      } catch {
+        // ignore
+      }
+    }
 
     const unsub = onAuthStateChanged(auth, (fbUser) => {
       if (!fbUser) {

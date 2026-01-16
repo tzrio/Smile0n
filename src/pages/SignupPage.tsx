@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { createUserWithEmailAndPassword, signOut, updateProfile } from 'firebase/auth'
-import { doc, setDoc } from 'firebase/firestore'
+import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore'
 import { Button } from '../components/Button'
 import { Input } from '../components/Input'
 import { getFirebaseAuth, getFirestoreDb } from '../firebase/firebase'
@@ -50,20 +50,31 @@ export function SignupPage() {
       // Spark flow: pastikan ada dokumen users/{uid} supaya CEO bisa lihat & approve.
       // Ini juga mencegah kondisi di mana kita logout terlalu cepat sebelum AuthContext sempat membuat doc.
       const db = getFirestoreDb()
+      const ref = doc(db, 'users', cred.user.uid)
       const now = isoNow()
-      await setDoc(
-        doc(db, 'users', cred.user.uid),
-        {
-          email: nextEmail,
+      const existing = await getDoc(ref)
+
+      if (!existing.exists()) {
+        await setDoc(
+          ref,
+          {
+            email: nextEmail,
+            name: nextName,
+            role: 'PENDING',
+            position: '',
+            avatarDataUrl: '',
+            createdAt: now,
+            updatedAt: now,
+          },
+          { merge: true }
+        )
+      } else {
+        // IMPORTANT: jangan sentuh email/role/createdAt (rules melarang), cukup update profil
+        await updateDoc(ref, {
           name: nextName,
-          role: 'PENDING',
-          position: '',
-          avatarDataUrl: '',
-          createdAt: now,
           updatedAt: now,
-        },
-        { merge: true }
-      )
+        } as any)
+      }
 
       // Karena role default = PENDING, user tidak bisa masuk ke app sebelum di-approve.
       // Supaya UX tidak "loncat" ke app lalu logout lagi, kita logout setelah signup.

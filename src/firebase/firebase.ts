@@ -3,42 +3,75 @@ import { getAuth } from 'firebase/auth'
 import { getFunctions } from 'firebase/functions'
 import { getFirestore } from 'firebase/firestore'
 
-type FirebaseEnv = {
-  apiKey: string
-  authDomain: string
-  projectId: string
-  storageBucket?: string
-  messagingSenderId?: string
-  appId: string
-  measurementId?: string
-}
 
-function readEnv(): FirebaseEnv {
-  const env = (import.meta as any).env ?? {}
+export type FirebaseConfigStatus =
+  | { ok: true }
+  | { ok: false; missingKeys: string[]; message: string };
 
-  const apiKey = String(env.VITE_FIREBASE_API_KEY ?? '')
-  const authDomain = String(env.VITE_FIREBASE_AUTH_DOMAIN ?? '')
-  const projectId = String(env.VITE_FIREBASE_PROJECT_ID ?? '')
-  const appId = String(env.VITE_FIREBASE_APP_ID ?? '')
-
-  if (!apiKey || !authDomain || !projectId || !appId) {
-    throw new Error('Firebase env belum lengkap. Cek VITE_FIREBASE_* di .env')
-  }
-
+function readFirebaseEnv() {
+  const env = (import.meta as any).env ?? {};
   return {
-    apiKey,
-    authDomain,
-    projectId,
-    appId,
+    apiKey: String(env.VITE_FIREBASE_API_KEY ?? ''),
+    authDomain: String(env.VITE_FIREBASE_AUTH_DOMAIN ?? ''),
+    projectId: String(env.VITE_FIREBASE_PROJECT_ID ?? ''),
+    appId: String(env.VITE_FIREBASE_APP_ID ?? ''),
     storageBucket: env.VITE_FIREBASE_STORAGE_BUCKET,
     messagingSenderId: env.VITE_FIREBASE_MESSAGING_SENDER_ID,
     measurementId: env.VITE_FIREBASE_MEASUREMENT_ID,
+  };
+}
+
+export function getFirebaseConfigStatus(): FirebaseConfigStatus {
+  const env = readFirebaseEnv();
+  const missingKeys: string[] = [];
+
+  if (!env.apiKey) missingKeys.push('VITE_FIREBASE_API_KEY');
+  if (!env.authDomain) missingKeys.push('VITE_FIREBASE_AUTH_DOMAIN');
+  if (!env.projectId) missingKeys.push('VITE_FIREBASE_PROJECT_ID');
+  if (!env.appId) missingKeys.push('VITE_FIREBASE_APP_ID');
+
+  if (missingKeys.length > 0) {
+    return {
+      ok: false,
+      missingKeys,
+      message:
+        'Firebase env belum lengkap. Cek VITE_FIREBASE_* di .env (local) atau GitHub Secrets (Pages build).',
+    };
   }
+
+  return { ok: true };
+}
+
+function getFirebaseConfigOrThrow(): {
+  apiKey: string;
+  authDomain: string;
+  projectId: string;
+  appId: string;
+  storageBucket?: string;
+  messagingSenderId?: string;
+  measurementId?: string;
+} {
+  const status = getFirebaseConfigStatus();
+  if (!status.ok) {
+    throw new Error(status.message);
+  }
+
+  const env = readFirebaseEnv();
+  return {
+    apiKey: env.apiKey,
+    authDomain: env.authDomain,
+    projectId: env.projectId,
+    appId: env.appId,
+    storageBucket: env.storageBucket,
+    messagingSenderId: env.messagingSenderId,
+    measurementId: env.measurementId,
+  };
 }
 
 export function getFirebaseApp() {
   if (getApps().length) return getApps()[0]!
-  const config = readEnv()
+  // Important: do not throw during module import. Only validate when the app is actually requested.
+  const config = getFirebaseConfigOrThrow()
   return initializeApp(config)
 }
 

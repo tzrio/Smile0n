@@ -5,21 +5,25 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    function userDoc(uid) {
-      return get(/databases/$(database)/documents/users/$(uid));
+    function myUserPath() {
+      return /databases/$(database)/documents/users/$(request.auth.uid);
     }
 
-    function myUserDoc() {
-      return userDoc(request.auth.uid);
+    function myUserExists() {
+      return signedIn() && exists(myUserPath());
+    }
+
+    function myUserData() {
+      return get(myUserPath()).data;
     }
 
     function myRole() {
-      // Prioritas: Custom Claims (lebih aman), fallback: users/{uid}.role
-      return signedIn()
-        ? (request.auth.token.role != null
-          ? request.auth.token.role
-          : (myUserDoc().exists() ? myUserDoc().data.role : null))
-        : null;
+      // NOTE:
+      // Custom claims bisa "nyangkut" (stale) dan override role di Firestore.
+      // Supaya Spark-friendly dan nggak ke-lock, kita utamakan role dari users/{uid}.role.
+      // Custom claim hanya dipakai kalau nilainya valid.
+      // Implementasi dibuat sederhana untuk menghindari banyak get() saat query/list.
+      return myUserExists() ? myUserData().role : null;
     }
 
     function isCEO() {
@@ -27,7 +31,8 @@ service cloud.firestore {
     }
 
     function isStaff() {
-      return signedIn() && myUserDoc().exists() && (myRole() in ['CEO', 'CTO', 'CMO']);
+      let r = myRole();
+      return r == 'CEO' || r == 'CTO' || r == 'CMO';
     }
 
     // USERS (karyawan) = users/{uid}
@@ -66,7 +71,8 @@ service cloud.firestore {
       allow create: if isStaff()
         && request.resource.data.quantity is number
         && request.resource.data.quantity > 0;
-      allow update, delete: if false;
+      allow update: if false;
+      allow delete: if isStaff();
     }
 
     // TRANSACTIONS (audit log) - hanya create
@@ -75,7 +81,20 @@ service cloud.firestore {
       allow create: if isStaff()
         && request.resource.data.amount is number
         && request.resource.data.amount > 0;
-      allow update, delete: if false;
+      allow update: if false;
+      allow delete: if isStaff();
+    }
+
+    // PRODUCTIONS (audit log)
+    match /productions/{id} {
+      allow read: if isStaff();
+      allow create: if isStaff()
+        && request.resource.data.rawQuantity is number
+        && request.resource.data.rawQuantity > 0
+        && request.resource.data.finishedQuantity is number
+        && request.resource.data.finishedQuantity > 0;
+      allow update: if false;
+      allow delete: if isStaff();
     }
 
     // SETTINGS

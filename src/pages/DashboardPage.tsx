@@ -15,8 +15,8 @@ export function DashboardPage() {
   const analytics = computeMonthlyAnalytics(data, 12, { productIds: finishedProductIds })
   const stock = computeProductStock(data, { productIds: finishedProductIds })
 
-  const totalProducts = data.products.length
   const totalEmployees = data.employees.length
+  const totalFinishedSkus = stock.length
   const totalRemainingStock = stock.reduce((acc, r) => acc + r.remaining, 0)
 
   return (
@@ -34,9 +34,9 @@ export function DashboardPage() {
       </div>
 
       <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-        <StatCard label="Jumlah Produk" value={`${totalProducts}`} />
+        <StatCard label="Jumlah Produk (Unit siap jual)" value={`${totalRemainingStock}`} hint="Total unit sisa barang jadi" />
+        <StatCard label="Jumlah Produk Jadi (SKU)" value={`${totalFinishedSkus}`} />
         <StatCard label="Jumlah Karyawan" value={`${totalEmployees}`} />
-        <StatCard label="Sisa Stok Barang Jadi (Total Unit)" value={`${totalRemainingStock}`} />
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">

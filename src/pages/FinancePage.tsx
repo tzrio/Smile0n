@@ -34,13 +34,6 @@ export function FinancePage() {
           ]}
         />
       </Card>
-
-      <Card title="Catatan" description="Struktur data siap untuk integrasi backend">
-        <div className="text-sm text-gray-700">
-          Perhitungan saat ini berbasis data transaksi yang tersimpan di browser (localStorage) agar UI dan struktur data
-          sudah siap untuk dipindahkan ke API / database. Saat backend siap, layer data dapat diganti tanpa mengubah UI.
-        </div>
-      </Card>
     </div>
   )
 }

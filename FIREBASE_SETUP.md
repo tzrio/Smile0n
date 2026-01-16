@@ -115,6 +115,11 @@ Catatan penting:
 - Pastikan dokumen `users/{uid}` untuk akun CEO sudah punya `role: 'CEO'` (set manual sekali di Console).
 - Akun user baru otomatis dibuatkan dokumen `users/{uid}` dengan `role: 'PENDING'` (default non-privilege).
 
+Troubleshooting permission-denied yang sering kejadian:
+- Kalau kamu pernah mencoba pakai Custom Claims (role di `request.auth.token.role`), claim bisa “nyangkut” dan override role di Firestore.
+- Di repo ini, rules sudah dibuat supaya **mengutamakan** role dari `users/{uid}.role` agar tidak ke-lock.
+- Setelah kamu Paste + Publish rules, lakukan **Logout → Login** (atau hard refresh) supaya token/auth state ikut segar.
+
 Untuk implementasi paling aman (recommended):
 - Role disimpan di **custom claims**: `request.auth.token.role`
 

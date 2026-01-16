@@ -7,6 +7,7 @@ import { DashboardPage } from './pages/DashboardPage'
 import { EmployeesPage } from './pages/EmployeesPage'
 import { InventoryPage } from './pages/InventoryPage'
 import { TransactionsPage } from './pages/TransactionsPage'
+import { ProductionPage } from './pages/ProductionPage'
 import { FinancePage } from './pages/FinancePage'
 import { ProfilePage } from './pages/ProfilePage'
 
@@ -23,6 +24,7 @@ export default function App() {
           <Route path="employees" element={<EmployeesPage />} />
           <Route path="inventory" element={<InventoryPage />} />
           <Route path="transactions" element={<TransactionsPage />} />
+          <Route path="production" element={<ProductionPage />} />
           <Route path="finance" element={<FinancePage />} />
           <Route path="profile" element={<ProfilePage />} />
           <Route path="*" element={<Navigate to="/app/dashboard" replace />} />
