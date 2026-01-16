@@ -31,7 +31,7 @@ npm run preview
 
 Project ini sudah diset untuk GitHub Pages (repo site) dengan:
 - `HashRouter` (URL jadi `/#/app/dashboard` supaya refresh tidak 404)
-- Vite `base: '/smile0n/'` (sesuaikan jika nama repo berbeda)
+- Vite `base: '/Smile0n/'` (case-sensitive; sesuaikan jika nama repo berbeda)
 
 Jika repo kamu **bukan** bernama `smile0n`, ubah `base` di `vite.config.ts`.
 
