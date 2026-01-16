@@ -42,8 +42,8 @@ jobs:
           #   VITE_FIREBASE_AUTH_DOMAIN=...
           #   VITE_FIREBASE_PROJECT_ID=...
           #   VITE_FIREBASE_APP_ID=...
-          if [ -n "${{ secrets.SMILEON || vars.SMILEON }}" ]; then
-            printf '%s\n' "${{ secrets.SMILEON || vars.SMILEON }}" > .env
+          if [ -n "${{ secrets.SMILE0N || vars.SMILE0N }}" ]; then
+            printf '%s\n' "${{ secrets.SMILE0N || vars.SMILE0N }}" > .env
           fi
 
           add_if_missing() {
