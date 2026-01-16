@@ -5,6 +5,7 @@ import { Input } from '../components/Input'
 import { PageHeader } from '../components/PageHeader'
 import { Select } from '../components/Select'
 import { Table } from '../components/Table'
+import { EmptyState } from '../components/EmptyState'
 import { repo } from '../data/repository'
 import { useAppData } from '../data/useAppData'
 import type { TransactionItem, TransactionType } from '../data/types'
@@ -377,14 +378,20 @@ export function TransactionsPage() {
           </div>
         </div>
 
-        <Table
-          headers={
-            canDeleteHistory
-              ? ['Tanggal', 'Jenis', 'Deskripsi', 'Item', 'Nominal', 'Penanggung Jawab', 'Aksi']
-              : ['Tanggal', 'Jenis', 'Deskripsi', 'Item', 'Nominal', 'Penanggung Jawab', 'Aksi']
-          }
-        >
-          {history.map((t) => {
+        {history.length === 0 ? (
+          <EmptyState
+            title="Belum ada transaksi"
+            description="Catat pembelian/penjualan untuk mulai membangun riwayat transaksi."
+          />
+        ) : (
+          <Table
+            headers={
+              canDeleteHistory
+                ? ['Tanggal', 'Jenis', 'Deskripsi', 'Item', 'Nominal', 'Penanggung Jawab', 'Aksi']
+                : ['Tanggal', 'Jenis', 'Deskripsi', 'Item', 'Nominal', 'Penanggung Jawab', 'Aksi']
+            }
+          >
+            {history.map((t) => {
             const emp = data.employees.find((x) => x.id === t.responsibleEmployeeId)
             const hasItems = Array.isArray(t.items) && t.items.length > 0
             const expanded = Boolean(expandedIds[t.id])
@@ -465,8 +472,9 @@ export function TransactionsPage() {
                 )}
               </Fragment>
             )
-          })}
-        </Table>
+            })}
+          </Table>
+        )}
       </Card>
     </div>
   )

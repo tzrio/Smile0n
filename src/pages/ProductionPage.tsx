@@ -5,6 +5,7 @@ import { Input } from '../components/Input'
 import { PageHeader } from '../components/PageHeader'
 import { Select } from '../components/Select'
 import { Table } from '../components/Table'
+import { EmptyState } from '../components/EmptyState'
 import { repo } from '../data/repository'
 import { useAppData } from '../data/useAppData'
 import type { Product } from '../data/types'
@@ -234,43 +235,50 @@ export function ProductionPage() {
       </Card>
 
       <Card title="Riwayat Produksi" description="Riwayat produksi yang men-trigger log stok otomatis (OUT bahan + IN barang jadi).">
-        <Table
-          headers={
-            canDeleteHistory
-              ? ['Tanggal', 'Bahan Mentah', 'Qty OUT', 'Barang Jadi', 'Qty IN', 'Penanggung Jawab', 'Catatan', 'Aksi']
-              : ['Tanggal', 'Bahan Mentah', 'Qty OUT', 'Barang Jadi', 'Qty IN', 'Penanggung Jawab', 'Catatan']
-          }
-        >
-          {history.map((p) => {
-            const raw = data.products.find((x) => x.id === p.rawProductId)
-            const fin = data.products.find((x) => x.id === p.finishedProductId)
-            const emp = data.employees.find((x) => x.id === p.responsibleEmployeeId)
-            return (
-              <tr key={p.id} className="hover:bg-gray-50">
-                <td className="px-5 py-3 text-gray-700">{formatDate(p.date)}</td>
-                <td className="px-5 py-3 text-gray-900">{raw?.name ?? p.rawProductId}</td>
-                <td className="px-5 py-3 text-gray-700">{p.rawQuantity}</td>
-                <td className="px-5 py-3 text-gray-900">{fin?.name ?? p.finishedProductId}</td>
-                <td className="px-5 py-3 text-gray-700">{p.finishedQuantity}</td>
-                <td className="px-5 py-3 text-gray-700">{emp?.name ?? p.responsibleEmployeeId}</td>
-                <td className="px-5 py-3 text-gray-700">{p.notes ?? '-'}</td>
-                {canDeleteHistory && (
-                  <td className="px-5 py-3">
-                    <Button
-                      type="button"
-                      variant="danger"
-                      className="px-2 py-1 text-xs"
-                      onClick={() => void deleteProduction(p.id)}
-                      disabled={deletingProductionId === p.id}
-                    >
-                      {deletingProductionId === p.id ? '...' : 'Hapus'}
-                    </Button>
-                  </td>
-                )}
-              </tr>
-            )
-          })}
-        </Table>
+        {history.length === 0 ? (
+          <EmptyState
+            title="Belum ada riwayat produksi"
+            description="Tambah produksi untuk mulai mencatat konversi bahan mentah menjadi barang jadi."
+          />
+        ) : (
+          <Table
+            headers={
+              canDeleteHistory
+                ? ['Tanggal', 'Bahan Mentah', 'Qty OUT', 'Barang Jadi', 'Qty IN', 'Penanggung Jawab', 'Catatan', 'Aksi']
+                : ['Tanggal', 'Bahan Mentah', 'Qty OUT', 'Barang Jadi', 'Qty IN', 'Penanggung Jawab', 'Catatan']
+            }
+          >
+            {history.map((p) => {
+              const raw = data.products.find((x) => x.id === p.rawProductId)
+              const fin = data.products.find((x) => x.id === p.finishedProductId)
+              const emp = data.employees.find((x) => x.id === p.responsibleEmployeeId)
+              return (
+                <tr key={p.id} className="hover:bg-gray-50">
+                  <td className="px-5 py-3 text-gray-700">{formatDate(p.date)}</td>
+                  <td className="px-5 py-3 text-gray-900">{raw?.name ?? p.rawProductId}</td>
+                  <td className="px-5 py-3 text-gray-700">{p.rawQuantity}</td>
+                  <td className="px-5 py-3 text-gray-900">{fin?.name ?? p.finishedProductId}</td>
+                  <td className="px-5 py-3 text-gray-700">{p.finishedQuantity}</td>
+                  <td className="px-5 py-3 text-gray-700">{emp?.name ?? p.responsibleEmployeeId}</td>
+                  <td className="px-5 py-3 text-gray-700">{p.notes ?? '-'}</td>
+                  {canDeleteHistory && (
+                    <td className="px-5 py-3">
+                      <Button
+                        type="button"
+                        variant="danger"
+                        className="px-2 py-1 text-xs"
+                        onClick={() => void deleteProduction(p.id)}
+                        disabled={deletingProductionId === p.id}
+                      >
+                        {deletingProductionId === p.id ? '...' : 'Hapus'}
+                      </Button>
+                    </td>
+                  )}
+                </tr>
+              )
+            })}
+          </Table>
+        )}
       </Card>
     </div>
   )

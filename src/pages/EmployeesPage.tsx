@@ -5,6 +5,7 @@ import { Input } from '../components/Input'
 import { PageHeader } from '../components/PageHeader'
 import { Select } from '../components/Select'
 import { Table } from '../components/Table'
+import { EmptyState } from '../components/EmptyState'
 import { useAuth } from '../auth/AuthContext'
 import { repo } from '../data/repository'
 import { useAppData } from '../data/useAppData'
@@ -22,14 +23,10 @@ export function EmployeesPage() {
     return raw === 'firebase'
   }, [])
 
-  const canCreateLocal = auth.hasRole(['CEO']) && !isFirebaseMode
   // Spark plan flow: CEO approves users by updating users/{uid}.role in Firestore.
   // (No Cloud Functions / custom claims required.)
   const canManageEmployeesFirebase = auth.hasRole(['CEO']) && isFirebaseMode
   const canEditEmployeePositionLocal = auth.hasRole(['CEO']) && !isFirebaseMode
-
-  const [name, setName] = useState('')
-  const [position, setPosition] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
 
@@ -38,27 +35,6 @@ export function EmployeesPage() {
   const [roleEdits, setRoleEdits] = useState<Record<string, 'CEO' | 'CTO' | 'CMO' | 'PENDING'>>({})
   const [positionEdits, setPositionEdits] = useState<Record<string, string>>({})
   const [rowLoading, setRowLoading] = useState<Record<string, boolean>>({})
-
-  function addEmployee() {
-    setError(null)
-    setSaved(false)
-    try {
-      if (!canCreateLocal) {
-        setError('Hanya CEO yang bisa menambah karyawan')
-        return
-      }
-      if (!name.trim() || !position.trim()) {
-        setError('Nama dan jabatan wajib diisi')
-        return
-      }
-      repo.employees.create({ name: name.trim(), position: position.trim() })
-      setName('')
-      setPosition('')
-      setSaved(true)
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Gagal menambah karyawan')
-    }
-  }
 
   async function saveEmployee(uid: string) {
     setError(null)
@@ -128,63 +104,20 @@ export function EmployeesPage() {
     <div className="space-y-6">
       <PageHeader title="Manajemen Profil Karyawan" subtitle="Kelola nama dan jabatan karyawan." />
 
-      <Card title="Tambah Karyawan">
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-          <div>
-            <div className="text-xs font-medium text-gray-700">Nama</div>
-            <div className="mt-1">
-              <Input
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Nama karyawan"
-                disabled={isFirebaseMode ? true : !canCreateLocal}
-              />
-            </div>
-          </div>
-          <div>
-            <div className="text-xs font-medium text-gray-700">Jabatan</div>
-            <div className="mt-1">
-              <Input
-                value={position}
-                onChange={(e) => setPosition(e.target.value)}
-                placeholder="Jabatan"
-                disabled={isFirebaseMode ? true : !canCreateLocal}
-              />
-            </div>
-          </div>
-
-          {isFirebaseMode ? (
-            <div className="flex items-end">
-              <Button type="button" className="w-full" disabled>
-                Di Firebase, user daftar via halaman Signup
-              </Button>
-            </div>
-          ) : (
-            <div className="flex items-end">
-              <Button type="button" onClick={addEmployee} className="w-full" disabled={!canCreateLocal}>
-                Simpan
-              </Button>
-            </div>
-          )}
-        </div>
-
-        {isFirebaseMode && (
-          <div className="mt-3 rounded-md border border-gray-200 bg-gray-50 p-3 text-sm text-gray-900">
-            Mode Firebase (Spark): user membuat akun lewat halaman Signup, lalu CEO meng-approve role di tabel bawah.
-          </div>
-        )}
-
-        {!isFirebaseMode && !canCreateLocal && (
-          <div className="mt-3 rounded-md border border-gray-200 bg-gray-50 p-3 text-sm text-gray-900">
-            Hanya CEO yang bisa menambah karyawan.
-          </div>
-        )}
-
-        {saved && <div className="mt-3 text-sm font-medium text-gray-700">Tersimpan.</div>}
-        {error && <div className="mt-3 rounded-md border border-gray-200 bg-gray-50 p-3 text-sm text-gray-900">{error}</div>}
-      </Card>
-
       <Card title="Daftar Karyawan" description="Data siap diintegrasikan ke API / database.">
+        {saved && <div className="mb-3 text-sm font-medium text-gray-700">Tersimpan.</div>}
+        {error && <div className="mb-3 rounded-md border border-gray-200 bg-gray-50 p-3 text-sm text-gray-900">{error}</div>}
+
+        {employees.length === 0 ? (
+          <EmptyState
+            title="Belum ada data karyawan"
+            description={
+              isFirebaseMode
+                ? 'Di mode Firebase, user membuat akun lewat halaman Signup lalu CEO meng-approve role di sini.'
+                : 'Belum ada data karyawan di mode local.'
+            }
+          />
+        ) : (
         <Table
           headers={
             isFirebaseMode
@@ -261,6 +194,7 @@ export function EmployeesPage() {
             </tr>
           ))}
         </Table>
+        )}
       </Card>
     </div>
   )

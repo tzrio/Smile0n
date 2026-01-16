@@ -5,6 +5,7 @@ import { Input } from '../components/Input'
 import { PageHeader } from '../components/PageHeader'
 import { Select } from '../components/Select'
 import { Table } from '../components/Table'
+import { EmptyState } from '../components/EmptyState'
 import { repo } from '../data/repository'
 import { useAppData } from '../data/useAppData'
 import { computeProductStock } from '../domain/selectors'
@@ -356,70 +357,77 @@ export function InventoryPage() {
             </div>
           </div>
         </div>
-        <Table headers={['Produk', 'Kategori', 'Keterangan', 'Stok Masuk', 'Stok Keluar', 'Sisa Stok', 'Aksi']}>
-          {stockRows.map((r) => (
-            <tr key={r.product.id} className="hover:bg-gray-50">
-              <td className="px-5 py-3 text-gray-900">
-                {editingProductId === r.product.id ? (
-                  <Input value={editingProductName} onChange={(e) => setEditingProductName(e.target.value)} />
-                ) : (
-                  r.product.name
-                )}
-              </td>
-              <td className="px-5 py-3 text-gray-700">{r.product.category}</td>
-              <td className="px-5 py-3 text-gray-700">{productKindLabel(r.product.kind)}</td>
-              <td className="px-5 py-3 text-gray-700">{r.stockIn}</td>
-              <td className="px-5 py-3 text-gray-700">{r.stockOut}</td>
-              <td className="px-5 py-3 font-semibold text-gray-900">{r.remaining}</td>
-              <td className="px-5 py-3">
-                <div className="flex flex-wrap gap-2">
+        {stockRows.length === 0 ? (
+          <EmptyState
+            title="Belum ada produk"
+            description="Tambah produk terlebih dulu, lalu catat stok masuk/keluar untuk melihat ringkasan stok."
+          />
+        ) : (
+          <Table headers={['Produk', 'Kategori', 'Keterangan', 'Stok Masuk', 'Stok Keluar', 'Sisa Stok', 'Aksi']}>
+            {stockRows.map((r) => (
+              <tr key={r.product.id} className="hover:bg-gray-50">
+                <td className="px-5 py-3 text-gray-900">
                   {editingProductId === r.product.id ? (
-                    <>
-                      <Button
-                        type="button"
-                        className="px-2 py-1 text-xs"
-                        onClick={() => void saveEditProduct(r.product.id)}
-                        disabled={savingProduct}
-                      >
-                        {savingProduct ? '...' : 'Simpan'}
-                      </Button>
+                    <Input value={editingProductName} onChange={(e) => setEditingProductName(e.target.value)} />
+                  ) : (
+                    r.product.name
+                  )}
+                </td>
+                <td className="px-5 py-3 text-gray-700">{r.product.category}</td>
+                <td className="px-5 py-3 text-gray-700">{productKindLabel(r.product.kind)}</td>
+                <td className="px-5 py-3 text-gray-700">{r.stockIn}</td>
+                <td className="px-5 py-3 text-gray-700">{r.stockOut}</td>
+                <td className="px-5 py-3 font-semibold text-gray-900">{r.remaining}</td>
+                <td className="px-5 py-3">
+                  <div className="flex flex-wrap gap-2">
+                    {editingProductId === r.product.id ? (
+                      <>
+                        <Button
+                          type="button"
+                          className="px-2 py-1 text-xs"
+                          onClick={() => void saveEditProduct(r.product.id)}
+                          disabled={savingProduct}
+                        >
+                          {savingProduct ? '...' : 'Simpan'}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          className="px-2 py-1 text-xs"
+                          onClick={() => {
+                            setEditingProductId(null)
+                            setEditingProductName('')
+                          }}
+                        >
+                          Batal
+                        </Button>
+                      </>
+                    ) : (
                       <Button
                         type="button"
                         variant="secondary"
                         className="px-2 py-1 text-xs"
-                        onClick={() => {
-                          setEditingProductId(null)
-                          setEditingProductName('')
-                        }}
+                        onClick={() => void startEditProduct(r.product.id)}
                       >
-                        Batal
+                        Edit Nama
                       </Button>
-                    </>
-                  ) : (
+                    )}
+
                     <Button
                       type="button"
-                      variant="secondary"
+                      variant="danger"
                       className="px-2 py-1 text-xs"
-                      onClick={() => void startEditProduct(r.product.id)}
+                      onClick={() => deleteProduct(r.product.id, r.product.name)}
+                      disabled={deletingProductId === r.product.id || editingProductId === r.product.id}
                     >
-                      Edit Nama
+                      {deletingProductId === r.product.id ? '...' : 'Hapus'}
                     </Button>
-                  )}
-
-                  <Button
-                    type="button"
-                    variant="danger"
-                    className="px-2 py-1 text-xs"
-                    onClick={() => deleteProduct(r.product.id, r.product.name)}
-                    disabled={deletingProductId === r.product.id || editingProductId === r.product.id}
-                  >
-                    {deletingProductId === r.product.id ? '...' : 'Hapus'}
-                  </Button>
-                </div>
-              </td>
-            </tr>
-          ))}
-        </Table>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </Table>
+        )}
       </Card>
 
       <Card title="Riwayat Pergerakan Stok" description="Data mentah (log) yang siap diintegrasikan ke backend.">
@@ -456,40 +464,47 @@ export function InventoryPage() {
             </div>
           </div>
         </div>
-        <Table
-          headers={
-            canDeleteHistory
-              ? ['Tanggal', 'Produk', 'Jenis', 'Qty', 'Penanggung Jawab', 'Aksi']
-              : ['Tanggal', 'Produk', 'Jenis', 'Qty', 'Penanggung Jawab']
-          }
-        >
-          {filteredMovements.map((m) => {
-            const p = data.products.find((x) => x.id === m.productId)
-            const emp = data.employees.find((x) => x.id === m.responsibleEmployeeId)
-            return (
-              <tr key={m.id} className="hover:bg-gray-50">
-                <td className="px-5 py-3 text-gray-700">{formatDate(m.date)}</td>
-                <td className="px-5 py-3 text-gray-900">{p?.name ?? m.productId}</td>
-                <td className="px-5 py-3 text-gray-700">{m.type === 'IN' ? 'Masuk' : 'Keluar'}</td>
-                <td className="px-5 py-3 text-gray-700">{m.quantity}</td>
-                <td className="px-5 py-3 text-gray-700">{emp?.name ?? m.responsibleEmployeeId}</td>
-                {canDeleteHistory && (
-                  <td className="px-5 py-3">
-                    <Button
-                      type="button"
-                      variant="danger"
-                      className="px-2 py-1 text-xs"
-                      onClick={() => void deleteMovement(m.id)}
-                      disabled={deletingMovementId === m.id}
-                    >
-                      {deletingMovementId === m.id ? '...' : 'Hapus'}
-                    </Button>
-                  </td>
-                )}
-              </tr>
-            )
-          })}
-        </Table>
+        {filteredMovements.length === 0 ? (
+          <EmptyState
+            title="Belum ada riwayat stok"
+            description="Mulai catat stok masuk/keluar untuk membangun riwayat pergerakan."
+          />
+        ) : (
+          <Table
+            headers={
+              canDeleteHistory
+                ? ['Tanggal', 'Produk', 'Jenis', 'Qty', 'Penanggung Jawab', 'Aksi']
+                : ['Tanggal', 'Produk', 'Jenis', 'Qty', 'Penanggung Jawab']
+            }
+          >
+            {filteredMovements.map((m) => {
+              const p = data.products.find((x) => x.id === m.productId)
+              const emp = data.employees.find((x) => x.id === m.responsibleEmployeeId)
+              return (
+                <tr key={m.id} className="hover:bg-gray-50">
+                  <td className="px-5 py-3 text-gray-700">{formatDate(m.date)}</td>
+                  <td className="px-5 py-3 text-gray-900">{p?.name ?? m.productId}</td>
+                  <td className="px-5 py-3 text-gray-700">{m.type === 'IN' ? 'Masuk' : 'Keluar'}</td>
+                  <td className="px-5 py-3 text-gray-700">{m.quantity}</td>
+                  <td className="px-5 py-3 text-gray-700">{emp?.name ?? m.responsibleEmployeeId}</td>
+                  {canDeleteHistory && (
+                    <td className="px-5 py-3">
+                      <Button
+                        type="button"
+                        variant="danger"
+                        className="px-2 py-1 text-xs"
+                        onClick={() => void deleteMovement(m.id)}
+                        disabled={deletingMovementId === m.id}
+                      >
+                        {deletingMovementId === m.id ? '...' : 'Hapus'}
+                      </Button>
+                    </td>
+                  )}
+                </tr>
+              )
+            })}
+          </Table>
+        )}
       </Card>
     </div>
   )
