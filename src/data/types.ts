@@ -1,3 +1,7 @@
+/**
+ * Domain/data types for the app.
+ * These types are shared by all repository implementations (local/firebase/api).
+ */
 export type Employee = {
   id: string
   name: string
@@ -60,6 +64,26 @@ export type Production = {
   notes?: string
 }
 
+export type AttendanceStatus = 'HADIR' | 'IZIN' | 'ALPHA'
+
+export type MeetingAttendance = {
+  name: string
+  status: AttendanceStatus
+}
+
+export type Meeting = {
+  id: string
+  title: string
+  activities?: string
+  startAt: string
+  endAt?: string
+  location: string
+  attendance: MeetingAttendance[]
+  notes?: string
+  createdAt: string
+  updatedAt: string
+}
+
 export type AppSettings = {
   cashOpeningBalance: number
 }
@@ -70,5 +94,6 @@ export type AppData = {
   stockMovements: StockMovement[]
   transactions: Transaction[]
   productions: Production[]
+  meetings: Meeting[]
   settings: AppSettings
 }

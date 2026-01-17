@@ -1,3 +1,8 @@
+/**
+ * Profile page:
+ * - Update name/avatar
+ * - Change password
+ */
 import { useMemo, useState } from 'react'
 import { useAuth } from '../auth/AuthContext'
 import { Button } from '../components/Button'
@@ -131,35 +136,35 @@ export function ProfilePage() {
             <img
               src={avatarDataUrl}
               alt="Foto profil"
-              className="h-14 w-14 rounded-full object-cover ring-1 ring-gray-200"
+              className="h-14 w-14 rounded-full object-cover ring-1 ring-gray-200 dark:ring-white/10"
             />
           ) : (
-            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-gray-200 text-sm font-semibold text-gray-700 ring-1 ring-gray-200">
+            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-gray-200 text-sm font-semibold text-gray-700 ring-1 ring-gray-200 dark:bg-white/10 dark:text-gray-100 dark:ring-white/10">
               {initials}
             </div>
           )}
 
           <div className="min-w-0">
-            <div className="text-sm font-semibold text-gray-900">{user?.name}</div>
-            <div className="mt-1 text-xs text-gray-600">{user?.email}</div>
-            <div className="mt-1 text-xs font-semibold text-gray-700">Role: {user?.role}</div>
+            <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">{user?.name}</div>
+            <div className="mt-1 text-xs text-gray-600 dark:text-gray-300">{user?.email}</div>
+            <div className="mt-1 text-xs font-semibold text-gray-700 dark:text-gray-300">Role: {user?.role}</div>
           </div>
         </div>
 
         <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-2">
           <div>
-            <div className="text-xs font-medium text-gray-700">Nama</div>
+            <div className="text-xs font-medium text-gray-700 dark:text-gray-300">Nama</div>
             <div className="mt-1">
               <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nama" />
             </div>
           </div>
 
           <div>
-            <div className="text-xs font-medium text-gray-700">Foto Profil</div>
+            <div className="text-xs font-medium text-gray-700 dark:text-gray-300">Foto Profil</div>
             <div className="mt-1">
               <Input type="file" accept="image/*" onChange={(e) => void onPickFile(e.target.files?.[0] ?? null)} />
             </div>
-            <div className="mt-1 text-xs text-gray-600">PNG/JPG maks 1MB.</div>
+            <div className="mt-1 text-xs text-gray-600 dark:text-gray-300">PNG/JPG maks 1MB.</div>
           </div>
         </div>
 
@@ -167,16 +172,20 @@ export function ProfilePage() {
           <Button type="button" onClick={onSave}>
             Simpan Profil
           </Button>
-          {saved && <div className="text-sm font-medium text-gray-700">Tersimpan.</div>}
+          {saved && <div className="text-sm font-medium text-gray-700 dark:text-gray-300">Tersimpan.</div>}
         </div>
 
-        {error && <div className="mt-3 rounded-md border border-gray-200 bg-gray-50 p-3 text-sm text-gray-900">{error}</div>}
+        {error && (
+          <div className="mt-3 rounded-md border border-gray-200 bg-gray-50 p-3 text-sm text-gray-900 dark:border-white/10 dark:bg-gray-950/40 dark:text-gray-100">
+            {error}
+          </div>
+        )}
       </Card>
 
       <Card title="Keamanan" description="Ubah kata sandi login.">
         <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
           <div>
-            <div className="text-xs font-medium text-gray-700">Password Saat Ini</div>
+            <div className="text-xs font-medium text-gray-700 dark:text-gray-300">Password Saat Ini</div>
             <div className="mt-1">
               <Input
                 type="password"
@@ -188,7 +197,7 @@ export function ProfilePage() {
           </div>
 
           <div>
-            <div className="text-xs font-medium text-gray-700">Password Baru</div>
+            <div className="text-xs font-medium text-gray-700 dark:text-gray-300">Password Baru</div>
             <div className="mt-1">
               <Input
                 type="password"
@@ -200,7 +209,7 @@ export function ProfilePage() {
           </div>
 
           <div>
-            <div className="text-xs font-medium text-gray-700">Konfirmasi Password Baru</div>
+            <div className="text-xs font-medium text-gray-700 dark:text-gray-300">Konfirmasi Password Baru</div>
             <div className="mt-1">
               <Input
                 type="password"
@@ -216,7 +225,7 @@ export function ProfilePage() {
           <Button type="button" onClick={onSavePassword}>
             Simpan Password
           </Button>
-          {passwordSaved && <div className="text-sm font-medium text-gray-700">Password berhasil diubah.</div>}
+          {passwordSaved && <div className="text-sm font-medium text-gray-700 dark:text-gray-300">Password berhasil diubah.</div>}
         </div>
       </Card>
 

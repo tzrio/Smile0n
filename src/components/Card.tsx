@@ -1,3 +1,7 @@
+/**
+ * Simple content container with optional header.
+ * Used across pages; supports dark mode styles.
+ */
 import type { ReactNode } from 'react'
 
 type Props = {
@@ -9,12 +13,12 @@ type Props = {
 
 export function Card({ title, description, right, children }: Props) {
   return (
-    <section className="rounded-xl bg-white shadow-sm ring-1 ring-gray-200/70">
+    <section className="rounded-xl bg-white shadow-sm ring-1 ring-gray-200/70 dark:bg-gray-900 dark:ring-white/10">
       {(title || description || right) && (
-        <header className="flex items-start justify-between gap-4 border-b border-gray-200/70 px-5 py-4">
+        <header className="flex items-start justify-between gap-4 border-b border-gray-200/70 px-5 py-4 dark:border-white/10">
           <div>
-            {title && <h2 className="text-sm font-semibold tracking-tight text-gray-900">{title}</h2>}
-            {description && <p className="mt-1 text-xs leading-5 text-gray-600">{description}</p>}
+            {title && <h2 className="text-sm font-semibold tracking-tight text-gray-900 dark:text-gray-100">{title}</h2>}
+            {description && <p className="mt-1 text-xs leading-5 text-gray-600 dark:text-gray-300">{description}</p>}
           </div>
           {right}
         </header>

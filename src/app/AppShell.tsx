@@ -1,6 +1,13 @@
+/**
+ * App layout shell:
+ * - Sidebar navigation
+ * - Online/offline indicator
+ * - Theme toggle (light/dark)
+ */
 import { NavLink, Outlet } from 'react-router-dom'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../auth/AuthContext'
+import { useTheme } from './ThemeContext'
 
 type IconName =
   | 'dashboard'
@@ -8,6 +15,7 @@ type IconName =
   | 'production'
   | 'transactions'
   | 'finance'
+  | 'meetings'
   | 'employees'
   | 'profile'
   | 'logout'
@@ -58,6 +66,19 @@ function Icon({ name, className }: { name: IconName; className?: string }) {
         <path d="M4 19V5" />
         <path d="M4 19h16" />
         <path d="M7 16l4-5 3 3 4-6" />
+      </svg>
+    )
+  }
+
+  if (name === 'meetings') {
+    return (
+      <svg viewBox="0 0 24 24" className={common} fill="none" stroke="currentColor" strokeWidth="2">
+        <path d="M7 4V2" />
+        <path d="M17 4V2" />
+        <path d="M3 8h18" />
+        <path d="M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z" />
+        <path d="M7 12h10" />
+        <path d="M7 16h7" />
       </svg>
     )
   }
@@ -190,6 +211,8 @@ function initialsFromName(name: string) {
 
 export function AppShell() {
   const { user, logout } = useAuth()
+  const { theme, toggleTheme } = useTheme()
+  const [online, setOnline] = useState(() => (typeof navigator !== 'undefined' ? navigator.onLine : true))
   const logoUrl = `${import.meta.env.BASE_URL}smileon_logo.jpg`
   const COLLAPSED_KEY = 'wallDecorAdmin.ui.sidebarCollapsed.v1'
   const [collapsed, setCollapsed] = useState(() => {
@@ -212,6 +235,7 @@ export function AppShell() {
         { to: '/app/production', label: 'Produksi', icon: 'production' as const },
         { to: '/app/transactions', label: 'Transaksi', icon: 'transactions' as const },
         { to: '/app/finance', label: 'Laporan Keuangan', icon: 'finance' as const },
+        { to: '/app/meetings', label: 'Rekap Rapat', icon: 'meetings' as const },
         { to: '/app/employees', label: 'Karyawan', icon: 'employees' as const },
         { to: '/app/profile', label: 'Profil', icon: 'profile' as const },
       ],
@@ -234,8 +258,19 @@ export function AppShell() {
     return menuItems.filter((m) => !primary.has(m.to))
   }, [menuItems, primaryMobileItems])
 
+  useEffect(() => {
+    const on = () => setOnline(true)
+    const off = () => setOnline(false)
+    window.addEventListener('online', on)
+    window.addEventListener('offline', off)
+    return () => {
+      window.removeEventListener('online', on)
+      window.removeEventListener('offline', off)
+    }
+  }, [])
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-gray-50 to-amber-50">
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-gray-50 to-amber-50 dark:from-gray-950 dark:via-gray-950 dark:to-gray-900">
       <div className="mx-auto max-w-screen-2xl">
         <div className={["grid min-h-screen grid-cols-1", navWidthClass].join(' ')}>
           <aside
@@ -269,6 +304,36 @@ export function AppShell() {
                     {user?.role}
                   </div>
                 )}
+
+                {!online && (
+                  collapsed ? (
+                    <div className="h-2 w-2 rounded-full bg-amber-400" title="Offline" />
+                  ) : (
+                    <div className="rounded-full bg-amber-500/20 px-2 py-1 text-xs font-semibold text-amber-100 ring-1 ring-amber-400/30">
+                      Offline
+                    </div>
+                  )
+                )}
+
+                <button
+                  type="button"
+                  onClick={toggleTheme}
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-md bg-white/10 text-white hover:bg-white/15"
+                  aria-label={theme === 'dark' ? 'Mode terang' : 'Mode gelap'}
+                  title={theme === 'dark' ? 'Mode terang' : 'Mode gelap'}
+                >
+                  {theme === 'dark' ? (
+                    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M12 18a6 6 0 1 0 0-12 6 6 0 0 0 0 12Z" />
+                      <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
+                    </svg>
+                  ) : (
+                    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M21 12.8A8.5 8.5 0 0 1 11.2 3a6.5 6.5 0 1 0 9.8 9.8Z" />
+                    </svg>
+                  )}
+                </button>
+
                 <button
                   type="button"
                   onClick={() =>
@@ -402,17 +467,24 @@ export function AppShell() {
                         <div className="truncate text-xs text-gray-300">{user?.name}</div>
                       </div>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => setMobileMenuOpen(false)}
-                      className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-white/10 text-white hover:bg-white/15"
-                      aria-label="Tutup"
-                      title="Tutup"
-                    >
-                      <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M6 6l12 12M18 6L6 18" />
-                      </svg>
-                    </button>
+                    <div className="flex items-center gap-2">
+                      {!online && (
+                        <div className="rounded-full bg-amber-500/20 px-2 py-1 text-[11px] font-semibold text-amber-100 ring-1 ring-amber-400/30">
+                          Offline
+                        </div>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => setMobileMenuOpen(false)}
+                        className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-white/10 text-white hover:bg-white/15"
+                        aria-label="Tutup"
+                        title="Tutup"
+                      >
+                        <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M6 6l12 12M18 6L6 18" />
+                        </svg>
+                      </button>
+                    </div>
                   </div>
 
                   <div className="mt-2 grid grid-cols-1 gap-1">
@@ -425,6 +497,25 @@ export function AppShell() {
                         onSelect={() => setMobileMenuOpen(false)}
                       />
                     ))}
+                    <button
+                      type="button"
+                      onClick={() => toggleTheme()}
+                      className="mt-1 flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-gray-200 transition hover:bg-white/10 hover:text-white"
+                    >
+                      <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/10 ring-1 ring-white/10">
+                        {theme === 'dark' ? (
+                          <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M12 18a6 6 0 1 0 0-12 6 6 0 0 0 0 12Z" />
+                            <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
+                          </svg>
+                        ) : (
+                          <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M21 12.8A8.5 8.5 0 0 1 11.2 3a6.5 6.5 0 1 0 9.8 9.8Z" />
+                          </svg>
+                        )}
+                      </span>
+                      <span className="min-w-0 flex-1 truncate">{theme === 'dark' ? 'Mode Terang' : 'Mode Gelap'}</span>
+                    </button>
                     <button
                       type="button"
                       onClick={() => {

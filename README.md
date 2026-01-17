@@ -12,6 +12,9 @@ Baca panduan proyek (lebih lengkap): [PROJECT_GUIDE.md](PROJECT_GUIDE.md)
 - Pencatatan transaksi (Pembelian, Penjualan, Tanggal, Penanggung jawab)
 - Laporan keuangan sederhana (Total penjualan, total pembelian, untung/rugi, saldo kas)
 - Dashboard analytics (grafik stok, penjualan, profit per bulan)
+- Rekap rapat (aktivitas, waktu, lokasi, kehadiran, catatan)
+- Export CSV (stok, mutasi stok, transaksi, produksi, laporan keuangan, rekap rapat)
+- Dark mode toggle (tersimpan) + indikator offline (best-effort)
 
 ## Cara Menjalankan
 
@@ -62,6 +65,10 @@ Jika `VITE_DATA_SOURCE=firebase`, user bisa daftar via `/#/signup`.
 - CEO perlu approve role user dari halaman **Karyawan**.
 
 Bootstrap CEO pertama (sekali saja): ubah `users/{uid}.role` menjadi `CEO` lewat Firebase Console.
+
+Catatan:
+- Firestore memakai IndexedDB persistence (best-effort) untuk pengalaman offline/latency-friendly.
+- Pastikan `firestore.rules` sudah dipublish dan mencakup collection `meetings`.
 
 ## Data & Integrasi Backend
 

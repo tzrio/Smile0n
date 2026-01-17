@@ -27,6 +27,9 @@ Frontend dibuat sebagai SPA (Vite + React + TypeScript + Tailwind) dan bisa jala
 - `src/app/AppShell.tsx` → layout sidebar
 - `firestore.rules` → rules Firestore yang dipakai
 
+Halaman tambahan:
+- `src/pages/MeetingsPage.tsx` → modul Rekap Rapat + export CSV
+
 ## Data Source Mode
 
 Set lewat env:
@@ -81,3 +84,10 @@ Logo diambil dari `public/smileon_logo.jpg` dan dirender menggunakan `import.met
 - Dev: `npm run dev`
 - Build: `npm run build`
 - Preview: `npm run preview`
+
+## Export CSV
+
+Semua export CSV memakai helper yang sama:
+- `src/utils/csv.ts` (`downloadCsv`, `buildCsv`)
+
+File CSV ditambah UTF-8 BOM supaya teks Indonesia terbaca benar di Excel.

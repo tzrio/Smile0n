@@ -1,3 +1,7 @@
+/**
+ * App route definitions.
+ * Uses HashRouter (see `src/main.tsx`) so GitHub Pages refresh won't 404.
+ */
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { ProtectedRoute } from './auth/ProtectedRoute'
 import { AppShell } from './app/AppShell'
@@ -10,6 +14,7 @@ import { TransactionsPage } from './pages/TransactionsPage'
 import { ProductionPage } from './pages/ProductionPage'
 import { FinancePage } from './pages/FinancePage'
 import { ProfilePage } from './pages/ProfilePage'
+import { MeetingsPage } from './pages/MeetingsPage'
 
 export default function App() {
   return (
@@ -26,6 +31,7 @@ export default function App() {
           <Route path="transactions" element={<TransactionsPage />} />
           <Route path="production" element={<ProductionPage />} />
           <Route path="finance" element={<FinancePage />} />
+          <Route path="meetings" element={<MeetingsPage />} />
           <Route path="profile" element={<ProfilePage />} />
           <Route path="*" element={<Navigate to="/app/dashboard" replace />} />
         </Route>

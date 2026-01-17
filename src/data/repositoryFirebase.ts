@@ -2,6 +2,7 @@ import type {
   AppData,
   AppSettings,
   Employee,
+  Meeting,
   Product,
   Production,
   StockMovement,
@@ -26,6 +27,11 @@ import {
 } from 'firebase/firestore'
 import { onAuthStateChanged } from 'firebase/auth'
 
+/**
+ * Firebase repository implementation (Auth + Firestore).
+ * - Uses snapshot listeners (onSnapshot) to keep UI reactive
+ * - Provides repo meta (`getMeta`) so UI can show skeletons until hydrated
+ */
 const EVENT_NAME = 'wallDecorAdmin.data.changed'
 
 type Unsub = () => void
@@ -45,7 +51,18 @@ let snapshot: AppData = {
   stockMovements: [],
   transactions: [],
   productions: [],
+  meetings: [],
   settings: { cashOpeningBalance: 0 },
+}
+
+let metaReady = false
+let metaUpdatedAt = ''
+
+function markMetaReady() {
+  if (metaReady) return
+  metaReady = true
+  metaUpdatedAt = isoNow()
+  notify()
 }
 
 function notify() {
@@ -142,6 +159,32 @@ function mapProduction(id: string, data: any): Production {
   }
 }
 
+function mapMeeting(id: string, data: any): Meeting {
+  const createdAt = toIsoMaybe(data?.createdAt) || isoNow()
+  const updatedAt = toIsoMaybe(data?.updatedAt) || createdAt
+  const attendance = Array.isArray(data?.attendance)
+    ? data.attendance
+        .map((a: any) => ({
+          name: String(a?.name ?? '').trim(),
+          status: a?.status === 'IZIN' ? 'IZIN' : a?.status === 'ALPHA' ? 'ALPHA' : 'HADIR',
+        }))
+        .filter((a: any) => Boolean(a.name))
+    : []
+
+  return {
+    id,
+    title: String(data?.title ?? ''),
+    activities: data?.activities ? String(data.activities) : undefined,
+    startAt: toIsoMaybe(data?.startAt) || createdAt,
+    endAt: data?.endAt ? (toIsoMaybe(data.endAt) || undefined) : undefined,
+    location: String(data?.location ?? ''),
+    attendance,
+    notes: data?.notes ? String(data.notes) : undefined,
+    createdAt,
+    updatedAt,
+  }
+}
+
 function resetToEmpty() {
   snapshot = {
     employees: [],
@@ -149,8 +192,11 @@ function resetToEmpty() {
     stockMovements: [],
     transactions: [],
     productions: [],
+    meetings: [],
     settings: { cashOpeningBalance: 0 },
   }
+  metaReady = false
+  metaUpdatedAt = ''
   notify()
 }
 
@@ -190,6 +236,9 @@ function startDataListeners() {
   if (dataStarted) return
   dataStarted = true
 
+  metaReady = false
+  metaUpdatedAt = ''
+
   const firestoreDb = (db ??= getFirestoreDb())
 
   // Sinkron karyawan = users/{uid}
@@ -198,6 +247,7 @@ function startDataListeners() {
   const stockRef = collection(firestoreDb, 'stockMovements')
   const trxRef = collection(firestoreDb, 'transactions')
   const prodRef = collection(firestoreDb, 'productions')
+  const meetingsRef = collection(firestoreDb, 'meetings')
   const settingsRef = doc(firestoreDb, 'settings', 'app')
 
   const unsubEmployees = onSnapshot(
@@ -207,6 +257,7 @@ function startDataListeners() {
         ...snapshot,
         employees: qs.docs.map((d) => mapEmployee(d.id, d.data())),
       }
+      markMetaReady()
       notify()
     },
     (err) => handleListenerError('users', err)
@@ -219,6 +270,7 @@ function startDataListeners() {
         ...snapshot,
         products: qs.docs.map((d) => mapProduct(d.id, d.data())),
       }
+      markMetaReady()
       notify()
     },
     (err) => handleListenerError('products', err)
@@ -231,6 +283,7 @@ function startDataListeners() {
         ...snapshot,
         stockMovements: qs.docs.map((d) => mapStockMovement(d.id, d.data())),
       }
+      markMetaReady()
       notify()
     },
     (err) => handleListenerError('stockMovements', err)
@@ -243,6 +296,7 @@ function startDataListeners() {
         ...snapshot,
         transactions: qs.docs.map((d) => mapTransaction(d.id, d.data())),
       }
+      markMetaReady()
       notify()
     },
     (err) => handleListenerError('transactions', err)
@@ -255,9 +309,23 @@ function startDataListeners() {
         ...snapshot,
         productions: qs.docs.map((d) => mapProduction(d.id, d.data())),
       }
+      markMetaReady()
       notify()
     },
     (err) => handleListenerError('productions', err)
+  )
+
+  const unsubMeetings = onSnapshot(
+    query(meetingsRef),
+    (qs) => {
+      snapshot = {
+        ...snapshot,
+        meetings: qs.docs.map((d) => mapMeeting(d.id, d.data())),
+      }
+      markMetaReady()
+      notify()
+    },
+    (err) => handleListenerError('meetings', err)
   )
 
   const unsubSettings = onSnapshot(
@@ -270,18 +338,21 @@ function startDataListeners() {
           cashOpeningBalance: Number(data?.cashOpeningBalance ?? 0),
         },
       }
+      markMetaReady()
       notify()
     },
     (err) => handleListenerError('settings/app', err)
   )
 
-  dataUnsubs = [unsubEmployees, unsubProducts, unsubStock, unsubTrx, unsubProd, unsubSettings]
+  dataUnsubs = [unsubEmployees, unsubProducts, unsubStock, unsubTrx, unsubProd, unsubMeetings, unsubSettings]
 }
 
 function stopDataListeners() {
   for (const u of dataUnsubs) u()
   dataUnsubs = []
   dataStarted = false
+  metaReady = false
+  metaUpdatedAt = ''
 }
 
 function startAuthWatcher() {
@@ -336,6 +407,10 @@ export const repoFirebase = {
 
   getAll(): AppData {
     return snapshot
+  },
+
+  getMeta() {
+    return { ready: metaReady, updatedAt: metaUpdatedAt }
   },
 
   employees: {
@@ -543,6 +618,43 @@ export const repoFirebase = {
     async setCashOpeningBalance(value: number) {
       const firestoreDb = (db ??= getFirestoreDb())
       await setDoc(doc(firestoreDb, 'settings', 'app'), { cashOpeningBalance: value } as AppSettings, { merge: true })
+    },
+  },
+
+  meetings: {
+    list(): Meeting[] {
+      return snapshot.meetings
+    },
+    async create(input: Omit<Meeting, 'id' | 'createdAt' | 'updatedAt'>): Promise<Meeting> {
+      const firestoreDb = (db ??= getFirestoreDb())
+      const now = isoNow()
+      const id = createId('mtg')
+      const m: Meeting = {
+        id,
+        title: input.title,
+        activities: input.activities,
+        startAt: input.startAt,
+        endAt: input.endAt,
+        location: input.location,
+        attendance: Array.isArray(input.attendance) ? input.attendance : [],
+        notes: input.notes,
+        createdAt: now,
+        updatedAt: now,
+      }
+      await setDoc(doc(firestoreDb, 'meetings', id), m)
+      return m
+    },
+    async update(id: string, patch: Partial<Omit<Meeting, 'id' | 'createdAt'>>): Promise<Meeting> {
+      const firestoreDb = (db ??= getFirestoreDb())
+      const nextUpdatedAt = isoNow()
+      await updateDoc(doc(firestoreDb, 'meetings', id), { ...patch, updatedAt: nextUpdatedAt } as any)
+      const current = snapshot.meetings.find((x) => x.id === id)
+      if (!current) throw new Error('Rekap rapat tidak ditemukan')
+      return { ...current, ...patch, updatedAt: nextUpdatedAt }
+    },
+    async remove(id: string): Promise<void> {
+      const firestoreDb = (db ??= getFirestoreDb())
+      await deleteDoc(doc(firestoreDb, 'meetings', id))
     },
   },
 }

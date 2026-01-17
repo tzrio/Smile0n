@@ -1,3 +1,7 @@
+/**
+ * Shared button component.
+ * Variants are Tailwind-based and theme-aware (dark mode).
+ */
 import type { ButtonHTMLAttributes } from 'react'
 
 type Props = ButtonHTMLAttributes<HTMLButtonElement> & {
@@ -9,8 +13,9 @@ const base =
 
 const variants: Record<NonNullable<Props['variant']>, string> = {
   primary: 'bg-indigo-600 text-white shadow-sm hover:bg-indigo-700 focus:ring-indigo-200',
-  secondary: 'border border-gray-200 bg-white text-gray-900 shadow-sm hover:bg-gray-50',
-  danger: 'bg-black text-white shadow-sm hover:bg-gray-800',
+  secondary:
+    'border border-gray-200 bg-white text-gray-900 shadow-sm hover:bg-gray-50 dark:border-white/10 dark:bg-gray-900 dark:text-gray-100 dark:hover:bg-white/10',
+  danger: 'bg-black text-white shadow-sm hover:bg-gray-800 focus:ring-gray-300 dark:bg-red-600 dark:hover:bg-red-500 dark:focus:ring-red-200',
 }
 
 export function Button({ variant = 'primary', className, ...props }: Props) {

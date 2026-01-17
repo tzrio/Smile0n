@@ -1,3 +1,8 @@
+/**
+ * Transactions page:
+ * - Purchase/Sale records (service or multi-item)
+ * - History filters + export CSV
+ */
 import { Fragment, useEffect, useMemo, useState } from 'react'
 import { Button } from '../components/Button'
 import { Card } from '../components/Card'
@@ -11,6 +16,7 @@ import { useAppData } from '../data/useAppData'
 import type { TransactionItem, TransactionType } from '../data/types'
 import { formatDate, isoNow } from '../utils/date'
 import { formatIDR } from '../utils/money'
+import { downloadCsv } from '../utils/csv'
 import { useToast } from '../app/ToastContext'
 import { useAuth } from '../auth/AuthContext'
 
@@ -64,6 +70,37 @@ export function TransactionsPage() {
       .slice()
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
   }, [data.transactions, filterFrom, filterQuery, filterTo, filterType])
+
+  function exportTransactionsCsv() {
+    const rows = history
+    const filename = `transaksi-${new Date(isoNow()).toISOString().slice(0, 10)}`
+
+    downloadCsv(filename, rows, [
+      { header: 'Tanggal', value: (t) => t.date },
+      { header: 'Jenis', value: (t) => t.type },
+      { header: 'Deskripsi', value: (t) => t.description },
+      { header: 'Nominal', value: (t) => t.amount },
+      {
+        header: 'Penanggung Jawab',
+        value: (t) => data.employees.find((e) => e.id === t.responsibleEmployeeId)?.name ?? t.responsibleEmployeeId,
+      },
+      { header: 'Jumlah Item', value: (t) => (Array.isArray(t.items) ? t.items.length : 0) },
+      {
+        header: 'Items (raw)',
+        value: (t) =>
+          Array.isArray(t.items)
+            ? t.items
+                .map((it) => {
+                  const pName = data.products.find((p) => p.id === it.productId)?.name ?? it.productId
+                  return `${pName} x${it.quantity} @${it.unitPrice}`
+                })
+                .join(' | ')
+            : '',
+      },
+    ])
+
+    toast.success('CSV transaksi berhasil dibuat')
+  }
 
   useEffect(() => {
     if (responsibleEmployeeId && data.employees.some((e) => e.id === responsibleEmployeeId)) return
@@ -202,12 +239,22 @@ export function TransactionsPage() {
       <PageHeader
         title="Pencatatan Transaksi"
         subtitle="Pembelian bahan/barang dan penjualan produk, lengkap dengan tanggal & penanggung jawab."
+        right={
+          <Button
+            variant="secondary"
+            onClick={exportTransactionsCsv}
+            disabled={history.length === 0}
+            title={history.length === 0 ? 'Tidak ada data untuk diexport' : 'Export CSV'}
+          >
+            Export CSV
+          </Button>
+        }
       />
 
       <Card title="Tambah Transaksi">
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
           <div>
-            <div className="text-xs font-medium text-gray-700">Jenis</div>
+            <div className="text-xs font-medium text-gray-700 dark:text-gray-300">Jenis</div>
             <div className="mt-1">
               <Select value={type} onChange={(e) => setType(e.target.value as TransactionType)}>
                 <option value="PURCHASE">Pembelian</option>
@@ -217,7 +264,7 @@ export function TransactionsPage() {
           </div>
 
           <div>
-            <div className="text-xs font-medium text-gray-700">Mode</div>
+            <div className="text-xs font-medium text-gray-700 dark:text-gray-300">Mode</div>
             <div className="mt-1">
               <Select
                 value={mode}
@@ -234,14 +281,14 @@ export function TransactionsPage() {
           </div>
 
           <div>
-            <div className="text-xs font-medium text-gray-700">Tanggal</div>
+            <div className="text-xs font-medium text-gray-700 dark:text-gray-300">Tanggal</div>
             <div className="mt-1">
               <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
             </div>
           </div>
 
           <div className="md:col-span-2">
-            <div className="text-xs font-medium text-gray-700">Deskripsi</div>
+            <div className="text-xs font-medium text-gray-700 dark:text-gray-300">Deskripsi</div>
             <div className="mt-1">
               <Input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Contoh: Beli lem kayu / Jual wall decor" />
             </div>
@@ -249,7 +296,7 @@ export function TransactionsPage() {
 
           {mode === 'SERVICE' ? (
             <div className="md:col-span-2">
-              <div className="text-xs font-medium text-gray-700">Nominal</div>
+              <div className="text-xs font-medium text-gray-700 dark:text-gray-300">Nominal</div>
               <div className="mt-1">
                 <Input
                   type="number"
@@ -259,11 +306,11 @@ export function TransactionsPage() {
                   placeholder="Contoh: 50000"
                 />
               </div>
-              <div className="mt-1 text-xs text-gray-600">Catatan: mode ini tidak membuat log stok otomatis.</div>
+              <div className="mt-1 text-xs text-gray-600 dark:text-gray-300">Catatan: mode ini tidak membuat log stok otomatis.</div>
             </div>
           ) : (
             <div className="md:col-span-2">
-              <div className="text-xs font-medium text-gray-700">Item Transaksi (multi-item)</div>
+              <div className="text-xs font-medium text-gray-700 dark:text-gray-300">Item Transaksi (multi-item)</div>
               <div className="mt-2 space-y-2">
                 {items.map((it, idx) => (
                   <div key={idx} className="grid grid-cols-1 gap-2 md:grid-cols-[1fr_120px_180px_90px]">
@@ -317,14 +364,14 @@ export function TransactionsPage() {
                   <Button type="button" variant="secondary" onClick={() => setItems([])}>
                     Kosongkan Item
                   </Button>
-                  <div className="text-sm font-semibold text-gray-900">Total: {formatIDR(totalAmount)}</div>
+                  <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">Total: {formatIDR(totalAmount)}</div>
                 </div>
               </div>
             </div>
           )}
 
           <div>
-            <div className="text-xs font-medium text-gray-700">Penanggung Jawab</div>
+            <div className="text-xs font-medium text-gray-700 dark:text-gray-300">Penanggung Jawab</div>
             <div className="mt-1">
               <Select value={responsibleEmployeeId} onChange={(e) => setResponsibleEmployeeId(e.target.value)}>
                 {data.employees.map((emp) => (
@@ -343,13 +390,17 @@ export function TransactionsPage() {
           </Button>
         </div>
 
-        {error && <div className="mt-3 rounded-md border border-gray-200 bg-gray-50 p-3 text-sm text-gray-900">{error}</div>}
+        {error && (
+          <div className="mt-3 rounded-md border border-gray-200 bg-gray-50 p-3 text-sm text-gray-900 dark:border-white/10 dark:bg-gray-950/40 dark:text-gray-100">
+            {error}
+          </div>
+        )}
       </Card>
 
       <Card title="Riwayat Transaksi" description="Semua transaksi pembelian dan penjualan.">
         <div className="mb-3 grid grid-cols-1 gap-3 md:grid-cols-4">
           <div>
-            <div className="text-xs font-medium text-gray-700">Filter Jenis</div>
+            <div className="text-xs font-medium text-gray-700 dark:text-gray-300">Filter Jenis</div>
             <div className="mt-1">
               <Select value={filterType} onChange={(e) => setFilterType(e.target.value as any)}>
                 <option value="ALL">Semua</option>
@@ -359,19 +410,19 @@ export function TransactionsPage() {
             </div>
           </div>
           <div>
-            <div className="text-xs font-medium text-gray-700">Cari Deskripsi</div>
+            <div className="text-xs font-medium text-gray-700 dark:text-gray-300">Cari Deskripsi</div>
             <div className="mt-1">
               <Input value={filterQuery} onChange={(e) => setFilterQuery(e.target.value)} placeholder="Cari..." />
             </div>
           </div>
           <div>
-            <div className="text-xs font-medium text-gray-700">Dari Tanggal</div>
+            <div className="text-xs font-medium text-gray-700 dark:text-gray-300">Dari Tanggal</div>
             <div className="mt-1">
               <Input type="date" value={filterFrom} onChange={(e) => setFilterFrom(e.target.value)} />
             </div>
           </div>
           <div>
-            <div className="text-xs font-medium text-gray-700">Sampai Tanggal</div>
+            <div className="text-xs font-medium text-gray-700 dark:text-gray-300">Sampai Tanggal</div>
             <div className="mt-1">
               <Input type="date" value={filterTo} onChange={(e) => setFilterTo(e.target.value)} />
             </div>
@@ -398,13 +449,13 @@ export function TransactionsPage() {
 
             return (
               <Fragment key={t.id}>
-                <tr className="hover:bg-gray-50">
-                  <td className="px-5 py-3 text-gray-700">{formatDate(t.date)}</td>
-                  <td className="px-5 py-3 text-gray-700">{t.type === 'PURCHASE' ? 'Pembelian' : 'Penjualan'}</td>
-                  <td className="px-5 py-3 text-gray-900">{t.description}</td>
-                  <td className="px-5 py-3 text-gray-700">{hasItems ? `${t.items!.length} item` : '-'}</td>
-                  <td className="px-5 py-3 text-gray-700">{formatIDR(t.amount)}</td>
-                  <td className="px-5 py-3 text-gray-700">{emp?.name ?? t.responsibleEmployeeId}</td>
+                <tr className="hover:bg-gray-50 dark:hover:bg-white/5">
+                  <td className="px-5 py-3 text-gray-700 dark:text-gray-300">{formatDate(t.date)}</td>
+                  <td className="px-5 py-3 text-gray-700 dark:text-gray-300">{t.type === 'PURCHASE' ? 'Pembelian' : 'Penjualan'}</td>
+                  <td className="px-5 py-3 text-gray-900 dark:text-gray-100">{t.description}</td>
+                  <td className="px-5 py-3 text-gray-700 dark:text-gray-300">{hasItems ? `${t.items!.length} item` : '-'}</td>
+                  <td className="px-5 py-3 text-gray-700 dark:text-gray-300">{formatIDR(t.amount)}</td>
+                  <td className="px-5 py-3 text-gray-700 dark:text-gray-300">{emp?.name ?? t.responsibleEmployeeId}</td>
                   <td className="px-5 py-3">
                     <div className="flex flex-wrap gap-2">
                       <Button
@@ -436,13 +487,13 @@ export function TransactionsPage() {
                   </td>
                 </tr>
                 {expanded && hasItems && (
-                  <tr className="bg-gray-50/60">
+                  <tr className="bg-gray-50/60 dark:bg-gray-950/40">
                     <td className="px-5 py-3" colSpan={7}>
-                      <div className="rounded-lg border border-gray-200 bg-white p-3">
-                        <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">Item Transaksi</div>
+                      <div className="rounded-lg border border-gray-200 bg-white p-3 dark:border-white/10 dark:bg-gray-900">
+                        <div className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Item Transaksi</div>
                         <div className="mt-2 overflow-x-auto">
                           <table className="min-w-full text-sm">
-                            <thead className="text-xs text-gray-500">
+                            <thead className="text-xs text-gray-500 dark:text-gray-400">
                               <tr>
                                 <th className="py-1 text-left font-semibold">Produk</th>
                                 <th className="py-1 text-right font-semibold">Qty</th>
@@ -450,16 +501,16 @@ export function TransactionsPage() {
                                 <th className="py-1 text-right font-semibold">Subtotal</th>
                               </tr>
                             </thead>
-                            <tbody className="text-gray-700">
+                            <tbody className="text-gray-700 dark:text-gray-300">
                               {(t.items ?? []).map((it, idx) => {
                                 const p = data.products.find((x) => x.id === it.productId)
                                 const sub = Number(it.quantity) * Number(it.unitPrice)
                                 return (
-                                  <tr key={idx} className="border-t border-gray-100">
-                                    <td className="py-1 pr-4 text-gray-900">{p?.name ?? it.productId}</td>
+                                  <tr key={idx} className="border-t border-gray-100 dark:border-white/10">
+                                    <td className="py-1 pr-4 text-gray-900 dark:text-gray-100">{p?.name ?? it.productId}</td>
                                     <td className="py-1 text-right">{it.quantity}</td>
                                     <td className="py-1 text-right">{formatIDR(it.unitPrice)}</td>
-                                    <td className="py-1 text-right font-semibold">{formatIDR(sub)}</td>
+                                    <td className="py-1 text-right font-semibold text-gray-900 dark:text-gray-100">{formatIDR(sub)}</td>
                                   </tr>
                                 )
                               })}

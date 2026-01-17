@@ -1,5 +1,10 @@
 import './chartSetup'
 import { Line } from 'react-chartjs-2'
+import { useTheme } from '../../app/ThemeContext'
+
+/**
+ * Theme-aware line chart wrapper for monthly analytics.
+ */
 
 type Series = {
   label: string
@@ -12,11 +17,13 @@ type Props = {
 }
 
 export function MonthlyLineChart({ months, series }: Props) {
+  const { theme } = useTheme()
+  const isDark = theme === 'dark'
   const hasData = series.some((s) => s.data.some((n) => Number.isFinite(n) && n !== 0))
 
   if (!months.length || !series.length || !hasData) {
     return (
-      <div className="flex h-64 items-center justify-center rounded-xl bg-gradient-to-br from-white to-indigo-50 text-sm text-gray-600 ring-1 ring-gray-200/70">
+      <div className="flex h-64 items-center justify-center rounded-xl bg-gradient-to-br from-white to-indigo-50 text-sm text-gray-600 ring-1 ring-gray-200/70 dark:from-gray-900 dark:to-gray-950 dark:text-gray-300 dark:ring-white/10">
         Belum ada data untuk ditampilkan.
       </div>
     )
@@ -53,14 +60,20 @@ export function MonthlyLineChart({ months, series }: Props) {
       legend: {
         display: true,
         position: 'bottom' as const,
-        labels: { usePointStyle: true, boxWidth: 10 },
+        labels: { usePointStyle: true, boxWidth: 10, color: isDark ? 'rgba(229, 231, 235, 0.92)' : 'rgba(55, 65, 81, 0.92)' },
       },
       title: { display: false },
       tooltip: { mode: 'index' as const, intersect: false },
     },
     scales: {
-      x: { grid: { display: false }, ticks: { maxRotation: 0, autoSkip: true } },
-      y: { ticks: { precision: 0 }, grid: { color: 'rgba(17, 24, 39, 0.06)' } },
+      x: {
+        grid: { display: false },
+        ticks: { maxRotation: 0, autoSkip: true, color: isDark ? 'rgba(209, 213, 219, 0.9)' : 'rgba(55, 65, 81, 0.85)' },
+      },
+      y: {
+        ticks: { precision: 0, color: isDark ? 'rgba(209, 213, 219, 0.9)' : 'rgba(55, 65, 81, 0.85)' },
+        grid: { color: isDark ? 'rgba(255, 255, 255, 0.10)' : 'rgba(17, 24, 39, 0.06)' },
+      },
     },
   }
 

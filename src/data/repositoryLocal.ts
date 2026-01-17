@@ -1,6 +1,11 @@
+/**
+ * Local repository implementation (localStorage).
+ * Intended for demo/offline usage with no backend.
+ */
 import type {
   AppData,
   Employee,
+  Meeting,
   Product,
   ProductKind,
   Production,
@@ -15,6 +20,7 @@ import { isoNow } from '../utils/date'
 type Update<T> = Partial<Omit<T, 'id' | 'createdAt'>>
 
 let cached: AppData | null = null
+let metaUpdatedAt = isoNow()
 
 function cloneSeed(): AppData {
   // seedData is plain JSON-serializable, so JSON clone is sufficient
@@ -32,6 +38,7 @@ function normalizeData(data: AppData): AppData {
   data.stockMovements = Array.isArray(data.stockMovements) ? data.stockMovements : []
   data.transactions = Array.isArray(data.transactions) ? data.transactions : []
   data.productions = Array.isArray((data as any).productions) ? (data as any).productions : []
+  data.meetings = Array.isArray((data as any).meetings) ? (data as any).meetings : []
   data.settings = data.settings ?? { cashOpeningBalance: 0 }
   return data
 }
@@ -47,12 +54,17 @@ function commit(mutator: (data: AppData) => void) {
   const data = ensureData()
   mutator(data)
   cached = data
+  metaUpdatedAt = isoNow()
   saveAppData(data)
 }
 
 export const repoLocal = {
   getAll(): AppData {
     return ensureData()
+  },
+
+  getMeta() {
+    return { ready: true, updatedAt: metaUpdatedAt }
   },
 
   employees: {
@@ -269,6 +281,55 @@ export const repoLocal = {
         d.productions = d.productions.filter((p) => p.id !== id)
         if (d.productions.length === before) throw new Error('Riwayat produksi tidak ditemukan')
         d.stockMovements = d.stockMovements.filter((m) => !(m.sourceType === 'PRODUCTION' && m.sourceId === id))
+      })
+    },
+  },
+
+  meetings: {
+    list(): Meeting[] {
+      return ensureData().meetings
+    },
+    create(input: Omit<Meeting, 'id' | 'createdAt' | 'updatedAt'>): Meeting {
+      const now = isoNow()
+      const m: Meeting = {
+        id: createId('mtg'),
+        title: input.title,
+        activities: input.activities,
+        startAt: input.startAt,
+        endAt: input.endAt,
+        location: input.location,
+        attendance: Array.isArray(input.attendance) ? input.attendance : [],
+        notes: input.notes,
+        createdAt: now,
+        updatedAt: now,
+      }
+      commit((d) => {
+        d.meetings.unshift(m)
+      })
+      return m
+    },
+    update(id: string, patch: Update<Meeting>): Meeting {
+      let updated: Meeting | null = null
+      commit((d) => {
+        d.meetings = d.meetings.map((m) => {
+          if (m.id !== id) return m
+          updated = {
+            ...m,
+            ...patch,
+            attendance: patch.attendance ? (Array.isArray(patch.attendance) ? patch.attendance : []) : m.attendance,
+            updatedAt: isoNow(),
+          }
+          return updated
+        })
+      })
+      if (!updated) throw new Error('Rekap rapat tidak ditemukan')
+      return updated
+    },
+    remove(id: string) {
+      commit((d) => {
+        const before = d.meetings.length
+        d.meetings = d.meetings.filter((m) => m.id !== id)
+        if (d.meetings.length === before) throw new Error('Rekap rapat tidak ditemukan')
       })
     },
   },

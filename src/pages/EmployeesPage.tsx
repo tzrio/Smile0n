@@ -1,3 +1,8 @@
+/**
+ * Employees page:
+ * - In Firebase mode: CEO approves roles (PENDING → CEO/CTO/CMO)
+ * - In Local mode: edit employee position
+ */
 import { useMemo, useState } from 'react'
 import { Button } from '../components/Button'
 import { Card } from '../components/Card'
@@ -105,8 +110,12 @@ export function EmployeesPage() {
       <PageHeader title="Manajemen Profil Karyawan" subtitle="Kelola nama dan jabatan karyawan." />
 
       <Card title="Daftar Karyawan" description="Data siap diintegrasikan ke API / database.">
-        {saved && <div className="mb-3 text-sm font-medium text-gray-700">Tersimpan.</div>}
-        {error && <div className="mb-3 rounded-md border border-gray-200 bg-gray-50 p-3 text-sm text-gray-900">{error}</div>}
+        {saved && <div className="mb-3 text-sm font-medium text-gray-700 dark:text-gray-300">Tersimpan.</div>}
+        {error && (
+          <div className="mb-3 rounded-md border border-gray-200 bg-gray-50 p-3 text-sm text-gray-900 dark:border-white/10 dark:bg-gray-950/40 dark:text-gray-100">
+            {error}
+          </div>
+        )}
 
         {employees.length === 0 ? (
           <EmptyState
@@ -130,9 +139,9 @@ export function EmployeesPage() {
           }
         >
           {employees.map((e) => (
-            <tr key={e.id} className="hover:bg-gray-50">
-              <td className="px-5 py-3 text-gray-900">{e.name}</td>
-              <td className="px-5 py-3 text-gray-700">
+            <tr key={e.id} className="hover:bg-gray-50 dark:hover:bg-white/5">
+              <td className="px-5 py-3 text-gray-900 dark:text-gray-100">{e.name}</td>
+              <td className="px-5 py-3 text-gray-700 dark:text-gray-300">
                 {isFirebaseMode && auth.hasRole(['CEO']) ? (
                   <Input
                     value={positionEdits[e.id] ?? e.position}
@@ -149,7 +158,7 @@ export function EmployeesPage() {
                   e.position
                 )}
               </td>
-              <td className="px-5 py-3 font-mono text-xs text-gray-600">{e.id}</td>
+              <td className="px-5 py-3 font-mono text-xs text-gray-600 dark:text-gray-400">{e.id}</td>
 
               {isFirebaseMode && (
                 <>
@@ -165,7 +174,7 @@ export function EmployeesPage() {
                         <option value="CMO">CMO</option>
                       </Select>
                     ) : (
-                      <div className="text-sm text-gray-700">{String((e as any).role ?? 'PENDING')}</div>
+                      <div className="text-sm text-gray-700 dark:text-gray-300">{String((e as any).role ?? 'PENDING')}</div>
                     )}
                   </td>
 

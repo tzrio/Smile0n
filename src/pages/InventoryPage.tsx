@@ -1,3 +1,9 @@
+/**
+ * Inventory (stok) page:
+ * - Products CRUD
+ * - Stock IN/OUT movements
+ * - Stock summary + export CSV
+ */
 import { useEffect, useMemo, useState } from 'react'
 import { Button } from '../components/Button'
 import { Card } from '../components/Card'
@@ -11,6 +17,7 @@ import { useAppData } from '../data/useAppData'
 import { computeProductStock } from '../domain/selectors'
 import type { ProductKind, StockMovementType } from '../data/types'
 import { isoNow, formatDate } from '../utils/date'
+import { downloadCsv } from '../utils/csv'
 import { useToast } from '../app/ToastContext'
 import { useAuth } from '../auth/AuthContext'
 
@@ -92,6 +99,41 @@ export function InventoryPage() {
     movementFilterTo,
     movementSearch,
   ])
+
+  function exportStockSummaryCsv() {
+    const rows = stockRows
+    const filename = `stok-ringkasan-${new Date(isoNow()).toISOString().slice(0, 10)}`
+    downloadCsv(filename, rows, [
+      { header: 'Produk', value: (r) => r.product.name },
+      { header: 'Kategori', value: (r) => r.product.category },
+      { header: 'Keterangan', value: (r) => r.product.kind },
+      { header: 'Stok Masuk', value: (r) => r.stockIn },
+      { header: 'Stok Keluar', value: (r) => r.stockOut },
+      { header: 'Sisa', value: (r) => r.remaining },
+    ])
+    toast.success('CSV ringkasan stok berhasil dibuat')
+  }
+
+  function exportStockMovementsCsv() {
+    const rows = filteredMovements
+    const filename = `stok-mutasi-${new Date(isoNow()).toISOString().slice(0, 10)}`
+    downloadCsv(filename, rows, [
+      { header: 'Tanggal', value: (m) => m.date },
+      {
+        header: 'Produk',
+        value: (m) => data.products.find((p) => p.id === m.productId)?.name ?? m.productId,
+      },
+      { header: 'Jenis', value: (m) => m.type },
+      { header: 'Qty', value: (m) => m.quantity },
+      {
+        header: 'Penanggung Jawab',
+        value: (m) => data.employees.find((e) => e.id === m.responsibleEmployeeId)?.name ?? m.responsibleEmployeeId,
+      },
+      { header: 'SourceType', value: (m) => m.sourceType ?? '' },
+      { header: 'SourceId', value: (m) => m.sourceId ?? '' },
+    ])
+    toast.success('CSV mutasi stok berhasil dibuat')
+  }
 
   useEffect(() => {
     if (movementProductId && data.products.some((p) => p.id === movementProductId)) return
@@ -235,25 +277,48 @@ export function InventoryPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Manajemen Stok Barang" subtitle="Produk, kategori, stok masuk/keluar, dan sisa stok otomatis." />
+      <PageHeader
+        title="Manajemen Stok Barang"
+        subtitle="Produk, kategori, stok masuk/keluar, dan sisa stok otomatis."
+        right={
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <Button
+              variant="secondary"
+              onClick={exportStockSummaryCsv}
+              disabled={stockRows.length === 0}
+              title={stockRows.length === 0 ? 'Tidak ada data untuk diexport' : 'Export ringkasan stok'}
+            >
+              Export Stok
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={exportStockMovementsCsv}
+              disabled={filteredMovements.length === 0}
+              title={filteredMovements.length === 0 ? 'Tidak ada data untuk diexport' : 'Export mutasi stok'}
+            >
+              Export Mutasi
+            </Button>
+          </div>
+        }
+      />
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Card title="Tambah Produk">
           <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
             <div>
-              <div className="text-xs font-medium text-gray-700">Nama Produk</div>
+              <div className="text-xs font-medium text-gray-700 dark:text-gray-300">Nama Produk</div>
               <div className="mt-1">
                 <Input value={productName} onChange={(e) => setProductName(e.target.value)} placeholder="Nama produk" />
               </div>
             </div>
             <div>
-              <div className="text-xs font-medium text-gray-700">Kategori</div>
+              <div className="text-xs font-medium text-gray-700 dark:text-gray-300">Kategori</div>
               <div className="mt-1">
                 <Input value={category} onChange={(e) => setCategory(e.target.value)} placeholder="Kategori" />
               </div>
             </div>
             <div>
-              <div className="text-xs font-medium text-gray-700">Keterangan</div>
+              <div className="text-xs font-medium text-gray-700 dark:text-gray-300">Keterangan</div>
               <div className="mt-1">
                 <Select value={productKind} onChange={(e) => setProductKind(e.target.value as ProductKind)}>
                   <option value="FINISHED">Barang jadi (siap jual)</option>
@@ -273,7 +338,7 @@ export function InventoryPage() {
         <Card title="Catat Stok Masuk / Keluar" description="Sisa stok dihitung otomatis dari pergerakan stok.">
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             <div>
-              <div className="text-xs font-medium text-gray-700">Produk</div>
+              <div className="text-xs font-medium text-gray-700 dark:text-gray-300">Produk</div>
               <div className="mt-1">
                 <Select value={movementProductId} onChange={(e) => setMovementProductId(e.target.value)}>
                   {data.products.map((p) => (
@@ -285,7 +350,7 @@ export function InventoryPage() {
               </div>
             </div>
             <div>
-              <div className="text-xs font-medium text-gray-700">Jenis</div>
+              <div className="text-xs font-medium text-gray-700 dark:text-gray-300">Jenis</div>
               <div className="mt-1">
                 <Select value={movementType} onChange={(e) => setMovementType(e.target.value as StockMovementType)}>
                   <option value="IN">Stok Masuk</option>
@@ -295,7 +360,7 @@ export function InventoryPage() {
             </div>
 
             <div>
-              <div className="text-xs font-medium text-gray-700">Qty</div>
+              <div className="text-xs font-medium text-gray-700 dark:text-gray-300">Qty</div>
               <div className="mt-1">
                 <Input
                   type="number"
@@ -307,14 +372,14 @@ export function InventoryPage() {
             </div>
 
             <div>
-              <div className="text-xs font-medium text-gray-700">Tanggal</div>
+              <div className="text-xs font-medium text-gray-700 dark:text-gray-300">Tanggal</div>
               <div className="mt-1">
                 <Input type="date" value={movementDate} onChange={(e) => setMovementDate(e.target.value)} />
               </div>
             </div>
 
             <div className="md:col-span-2">
-              <div className="text-xs font-medium text-gray-700">Penanggung Jawab</div>
+              <div className="text-xs font-medium text-gray-700 dark:text-gray-300">Penanggung Jawab</div>
               <div className="mt-1">
                 <Select value={movementEmployeeId} onChange={(e) => setMovementEmployeeId(e.target.value)}>
                   {data.employees.map((emp) => (
@@ -335,18 +400,22 @@ export function InventoryPage() {
         </Card>
       </div>
 
-      {error && <div className="rounded-md border border-gray-200 bg-gray-50 p-3 text-sm text-gray-900">{error}</div>}
+      {error && (
+        <div className="rounded-md border border-gray-200 bg-gray-50 p-3 text-sm text-gray-900 dark:border-white/10 dark:bg-gray-950/40 dark:text-gray-100">
+          {error}
+        </div>
+      )}
 
       <Card title="Ringkasan Stok" description="Stok masuk, keluar, dan sisa stok per produk.">
         <div className="mb-3 grid grid-cols-1 gap-3 md:grid-cols-3">
           <div>
-            <div className="text-xs font-medium text-gray-700">Cari Produk</div>
+            <div className="text-xs font-medium text-gray-700 dark:text-gray-300">Cari Produk</div>
             <div className="mt-1">
               <Input value={productSearch} onChange={(e) => setProductSearch(e.target.value)} placeholder="Cari nama produk..." />
             </div>
           </div>
           <div>
-            <div className="text-xs font-medium text-gray-700">Filter Keterangan</div>
+            <div className="text-xs font-medium text-gray-700 dark:text-gray-300">Filter Keterangan</div>
             <div className="mt-1">
               <Select value={productKindFilter} onChange={(e) => setProductKindFilter(e.target.value as any)}>
                 <option value="ALL">Semua</option>
@@ -365,19 +434,19 @@ export function InventoryPage() {
         ) : (
           <Table headers={['Produk', 'Kategori', 'Keterangan', 'Stok Masuk', 'Stok Keluar', 'Sisa Stok', 'Aksi']}>
             {stockRows.map((r) => (
-              <tr key={r.product.id} className="hover:bg-gray-50">
-                <td className="px-5 py-3 text-gray-900">
+              <tr key={r.product.id} className="hover:bg-gray-50 dark:hover:bg-white/5">
+                <td className="px-5 py-3 text-gray-900 dark:text-gray-100">
                   {editingProductId === r.product.id ? (
                     <Input value={editingProductName} onChange={(e) => setEditingProductName(e.target.value)} />
                   ) : (
                     r.product.name
                   )}
                 </td>
-                <td className="px-5 py-3 text-gray-700">{r.product.category}</td>
-                <td className="px-5 py-3 text-gray-700">{productKindLabel(r.product.kind)}</td>
-                <td className="px-5 py-3 text-gray-700">{r.stockIn}</td>
-                <td className="px-5 py-3 text-gray-700">{r.stockOut}</td>
-                <td className="px-5 py-3 font-semibold text-gray-900">{r.remaining}</td>
+                <td className="px-5 py-3 text-gray-700 dark:text-gray-300">{r.product.category}</td>
+                <td className="px-5 py-3 text-gray-700 dark:text-gray-300">{productKindLabel(r.product.kind)}</td>
+                <td className="px-5 py-3 text-gray-700 dark:text-gray-300">{r.stockIn}</td>
+                <td className="px-5 py-3 text-gray-700 dark:text-gray-300">{r.stockOut}</td>
+                <td className="px-5 py-3 font-semibold text-gray-900 dark:text-gray-100">{r.remaining}</td>
                 <td className="px-5 py-3">
                   <div className="flex flex-wrap gap-2">
                     {editingProductId === r.product.id ? (
@@ -433,7 +502,7 @@ export function InventoryPage() {
       <Card title="Riwayat Pergerakan Stok" description="Data mentah (log) yang siap diintegrasikan ke backend.">
         <div className="mb-3 grid grid-cols-1 gap-3 md:grid-cols-5">
           <div>
-            <div className="text-xs font-medium text-gray-700">Filter Produk</div>
+            <div className="text-xs font-medium text-gray-700 dark:text-gray-300">Filter Produk</div>
             <div className="mt-1">
               <Select value={movementFilterProductId} onChange={(e) => setMovementFilterProductId(e.target.value)}>
                 <option value="ALL">Semua</option>
@@ -446,19 +515,19 @@ export function InventoryPage() {
             </div>
           </div>
           <div>
-            <div className="text-xs font-medium text-gray-700">Dari Tanggal</div>
+            <div className="text-xs font-medium text-gray-700 dark:text-gray-300">Dari Tanggal</div>
             <div className="mt-1">
               <Input type="date" value={movementFilterFrom} onChange={(e) => setMovementFilterFrom(e.target.value)} />
             </div>
           </div>
           <div>
-            <div className="text-xs font-medium text-gray-700">Sampai Tanggal</div>
+            <div className="text-xs font-medium text-gray-700 dark:text-gray-300">Sampai Tanggal</div>
             <div className="mt-1">
               <Input type="date" value={movementFilterTo} onChange={(e) => setMovementFilterTo(e.target.value)} />
             </div>
           </div>
           <div className="md:col-span-2">
-            <div className="text-xs font-medium text-gray-700">Cari</div>
+            <div className="text-xs font-medium text-gray-700 dark:text-gray-300">Cari</div>
             <div className="mt-1">
               <Input value={movementSearch} onChange={(e) => setMovementSearch(e.target.value)} placeholder="Cari produk / penanggung jawab..." />
             </div>
@@ -481,12 +550,12 @@ export function InventoryPage() {
               const p = data.products.find((x) => x.id === m.productId)
               const emp = data.employees.find((x) => x.id === m.responsibleEmployeeId)
               return (
-                <tr key={m.id} className="hover:bg-gray-50">
-                  <td className="px-5 py-3 text-gray-700">{formatDate(m.date)}</td>
-                  <td className="px-5 py-3 text-gray-900">{p?.name ?? m.productId}</td>
-                  <td className="px-5 py-3 text-gray-700">{m.type === 'IN' ? 'Masuk' : 'Keluar'}</td>
-                  <td className="px-5 py-3 text-gray-700">{m.quantity}</td>
-                  <td className="px-5 py-3 text-gray-700">{emp?.name ?? m.responsibleEmployeeId}</td>
+                <tr key={m.id} className="hover:bg-gray-50 dark:hover:bg-white/5">
+                  <td className="px-5 py-3 text-gray-700 dark:text-gray-300">{formatDate(m.date)}</td>
+                  <td className="px-5 py-3 text-gray-900 dark:text-gray-100">{p?.name ?? m.productId}</td>
+                  <td className="px-5 py-3 text-gray-700 dark:text-gray-300">{m.type === 'IN' ? 'Masuk' : 'Keluar'}</td>
+                  <td className="px-5 py-3 text-gray-700 dark:text-gray-300">{m.quantity}</td>
+                  <td className="px-5 py-3 text-gray-700 dark:text-gray-300">{emp?.name ?? m.responsibleEmployeeId}</td>
                   {canDeleteHistory && (
                     <td className="px-5 py-3">
                       <Button

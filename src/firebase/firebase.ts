@@ -1,8 +1,13 @@
 import { initializeApp, getApps } from 'firebase/app'
 import { getAuth } from 'firebase/auth'
 import { getFunctions } from 'firebase/functions'
-import { getFirestore } from 'firebase/firestore'
+import { enableIndexedDbPersistence, getFirestore } from 'firebase/firestore'
 
+/**
+ * Firebase client initialization.
+ * Firestore enables IndexedDB persistence in a best-effort way to improve
+ * offline/latency friendliness (ignored when unsupported or multi-tab conflicts).
+ */
 
 export type FirebaseConfigStatus =
   | { ok: true }
@@ -80,7 +85,15 @@ export function getFirebaseAuth() {
 }
 
 export function getFirestoreDb() {
-  return getFirestore(getFirebaseApp())
+  const firestore = getFirestore(getFirebaseApp())
+  // Best-effort offline cache. Ignore if unsupported or multi-tab conflict.
+  if (!persistenceTried) {
+    persistenceTried = true
+    enableIndexedDbPersistence(firestore).catch(() => {
+      // ignore
+    })
+  }
+  return firestore
 }
 
 export function getFirebaseFunctions() {
@@ -88,3 +101,5 @@ export function getFirebaseFunctions() {
   const region = String(env.VITE_FIREBASE_FUNCTIONS_REGION ?? '').trim()
   return region ? getFunctions(getFirebaseApp(), region) : getFunctions(getFirebaseApp())
 }
+
+let persistenceTried = false

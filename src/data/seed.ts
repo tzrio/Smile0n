@@ -1,3 +1,7 @@
+/**
+ * Seed data for local mode (localStorage).
+ * Keep this JSON-serializable.
+ */
 import type { AppData } from './types'
 
 export const seedData: AppData = {
@@ -45,6 +49,7 @@ export const seedData: AppData = {
   stockMovements: [],
   transactions: [],
   productions: [],
+  meetings: [],
   settings: {
     cashOpeningBalance: 0,
   },

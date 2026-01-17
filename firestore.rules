@@ -1,4 +1,6 @@
-﻿rules_version = '2';
+﻿// Firestore security rules for Wall Decor Admin.
+// Collection-level policies are defined per domain module.
+rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     function signedIn() {
@@ -95,6 +97,12 @@ service cloud.firestore {
         && request.resource.data.finishedQuantity > 0;
       allow update: if false;
       allow delete: if isStaff();
+    }
+
+    // MEETINGS (rekap rapat)
+    match /meetings/{id} {
+      allow read: if isStaff();
+      allow create, update, delete: if isStaff();
     }
 
     // SETTINGS

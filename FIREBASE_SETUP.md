@@ -90,6 +90,18 @@ Field minimum:
 ### `settings/app`
 - `cashOpeningBalance: number`
 
+### `meetings/{meetingId}`
+Field yang dipakai aplikasi:
+- `title: string`
+- `activities?: string`
+- `startAt: timestamp`
+- `endAt?: timestamp`
+- `location: string`
+- `attendance: Array<{ name: string, status: 'HADIR'|'IZIN'|'ALPHA' }>`
+- `notes?: string`
+- `createdAt: timestamp`
+- `updatedAt: timestamp`
+
 > Ini mirip dengan `src/data/types.ts`, tapi dipisah per-collection supaya tidak mentok batas 1MB dokumen.
 
 ---
@@ -149,6 +161,11 @@ service cloud.firestore {
     }
 
     match /transactions/{id} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
+    }
+
+    match /meetings/{id} {
       allow read: if isSignedIn();
       allow write: if isSignedIn();
     }
@@ -236,3 +253,10 @@ Kalau kamu setuju, langkah selanjutnya yang bisa aku kerjakan di repo ini:
 2) Tambah repository **Firestore** (mode `VITE_DATA_SOURCE=firebase`).
 3) Scaffold Cloud Functions untuk **create user + set role claims**.
 4) Siapkan config GitHub Pages (HashRouter atau 404 redirect).
+
+---
+
+## Offline / Latency-friendly (catatan)
+
+Repo ini mencoba mengaktifkan Firestore IndexedDB persistence secara best-effort.
+Jika browser tidak mendukung atau ada konflik multi-tab, error akan diabaikan dan app tetap jalan.
