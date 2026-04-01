@@ -88,6 +88,33 @@ export type AppSettings = {
   cashOpeningBalance: number
 }
 
+export type ContentScheduleColumn = {
+  id: string
+  label: string
+}
+
+export type ContentScheduleRow = {
+  id: string
+  values: Record<string, string>
+}
+
+export type ContentScheduleCalendarConfig = {
+  dateColumnId?: string
+  timeColumnId?: string
+  titleColumnId?: string
+  statusColumnId?: string
+}
+
+export type ContentSchedule = {
+  id: string
+  title: string
+  columns: ContentScheduleColumn[]
+  rows: ContentScheduleRow[]
+  calendarConfig?: ContentScheduleCalendarConfig
+  createdAt: string
+  updatedAt: string
+}
+
 export type AppData = {
   employees: Employee[]
   products: Product[]
@@ -95,5 +122,6 @@ export type AppData = {
   transactions: Transaction[]
   productions: Production[]
   meetings: Meeting[]
+  contentSchedules: ContentSchedule[]
   settings: AppSettings
 }

@@ -4,6 +4,7 @@
  */
 import type {
   AppData,
+  ContentSchedule,
   Employee,
   Meeting,
   Product,
@@ -18,6 +19,7 @@ import { createId } from '../utils/id'
 import { isoNow } from '../utils/date'
 
 type Update<T> = Partial<Omit<T, 'id' | 'createdAt'>>
+type UpdateSchedule = Partial<Omit<ContentSchedule, 'id' | 'createdAt' | 'updatedAt'>>
 
 let cached: AppData | null = null
 let metaUpdatedAt = isoNow()
@@ -39,6 +41,7 @@ function normalizeData(data: AppData): AppData {
   data.transactions = Array.isArray(data.transactions) ? data.transactions : []
   data.productions = Array.isArray((data as any).productions) ? (data as any).productions : []
   data.meetings = Array.isArray((data as any).meetings) ? (data as any).meetings : []
+  data.contentSchedules = Array.isArray((data as any).contentSchedules) ? (data as any).contentSchedules : []
   data.settings = data.settings ?? { cashOpeningBalance: 0 }
   return data
 }
@@ -330,6 +333,54 @@ export const repoLocal = {
         const before = d.meetings.length
         d.meetings = d.meetings.filter((m) => m.id !== id)
         if (d.meetings.length === before) throw new Error('Rekap rapat tidak ditemukan')
+      })
+    },
+  },
+
+  contentSchedules: {
+    list() {
+      return ensureData().contentSchedules
+    },
+    create(input: Omit<ContentSchedule, 'id' | 'createdAt' | 'updatedAt'>) {
+      const now = isoNow()
+      const s: ContentSchedule = {
+        id: createId('sch'),
+        title: input.title,
+        columns: Array.isArray(input.columns) ? input.columns : [],
+        rows: Array.isArray(input.rows) ? input.rows : [],
+        calendarConfig: input.calendarConfig,
+        createdAt: now,
+        updatedAt: now,
+      }
+      commit((d) => {
+        d.contentSchedules.unshift(s)
+      })
+      return s
+    },
+    update(id: string, patch: UpdateSchedule) {
+      let updated: ContentSchedule | null = null
+      commit((d) => {
+        d.contentSchedules = d.contentSchedules.map((s) => {
+          if (s.id !== id) return s
+          updated = {
+            ...s,
+            ...patch,
+            columns: patch.columns ? (Array.isArray(patch.columns) ? patch.columns : []) : s.columns,
+            rows: patch.rows ? (Array.isArray(patch.rows) ? patch.rows : []) : s.rows,
+            calendarConfig: patch.calendarConfig ?? s.calendarConfig,
+            updatedAt: isoNow(),
+          }
+          return updated
+        })
+      })
+      if (!updated) throw new Error('Timeline konten tidak ditemukan')
+      return updated
+    },
+    remove(id: string) {
+      commit((d) => {
+        const before = d.contentSchedules.length
+        d.contentSchedules = d.contentSchedules.filter((s) => s.id !== id)
+        if (d.contentSchedules.length === before) throw new Error('Timeline konten tidak ditemukan')
       })
     },
   },

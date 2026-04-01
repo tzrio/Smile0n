@@ -16,6 +16,7 @@ type IconName =
   | 'transactions'
   | 'finance'
   | 'meetings'
+  | 'timeline'
   | 'employees'
   | 'profile'
   | 'logout'
@@ -79,6 +80,19 @@ function Icon({ name, className }: { name: IconName; className?: string }) {
         <path d="M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z" />
         <path d="M7 12h10" />
         <path d="M7 16h7" />
+      </svg>
+    )
+  }
+
+  if (name === 'timeline') {
+    return (
+      <svg viewBox="0 0 24 24" className={common} fill="none" stroke="currentColor" strokeWidth="2">
+        <path d="M4 5h16" />
+        <path d="M4 12h16" />
+        <path d="M4 19h16" />
+        <circle cx="8" cy="5" r="1.5" />
+        <circle cx="12" cy="12" r="1.5" />
+        <circle cx="16" cy="19" r="1.5" />
       </svg>
     )
   }
@@ -236,6 +250,7 @@ export function AppShell() {
         { to: '/app/transactions', label: 'Transaksi', icon: 'transactions' as const },
         { to: '/app/finance', label: 'Laporan Keuangan', icon: 'finance' as const },
         { to: '/app/meetings', label: 'Rekap Rapat', icon: 'meetings' as const },
+        { to: '/app/timeline-konten', label: 'Timeline Konten', icon: 'timeline' as const },
         { to: '/app/employees', label: 'Karyawan', icon: 'employees' as const },
         { to: '/app/profile', label: 'Profil', icon: 'profile' as const },
       ],

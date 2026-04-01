@@ -1,6 +1,7 @@
 import type {
   AppData,
   AppSettings,
+  ContentSchedule,
   Employee,
   Meeting,
   Product,
@@ -52,6 +53,7 @@ let snapshot: AppData = {
   transactions: [],
   productions: [],
   meetings: [],
+  contentSchedules: [],
   settings: { cashOpeningBalance: 0 },
 }
 
@@ -185,6 +187,34 @@ function mapMeeting(id: string, data: any): Meeting {
   }
 }
 
+function mapContentSchedule(id: string, data: any): ContentSchedule {
+  const createdAt = toIsoMaybe(data?.createdAt) || isoNow()
+  const updatedAt = toIsoMaybe(data?.updatedAt) || createdAt
+  const columns = Array.isArray(data?.columns)
+    ? data.columns
+        .map((c: any) => ({ id: String(c?.id ?? ''), label: String(c?.label ?? '') }))
+        .filter((c: any) => Boolean(c.id) && Boolean(c.label))
+    : []
+  const rows = Array.isArray(data?.rows)
+    ? data.rows
+        .map((r: any) => ({
+          id: String(r?.id ?? ''),
+          values: typeof r?.values === 'object' && r?.values ? (r.values as Record<string, string>) : {},
+        }))
+        .filter((r: any) => Boolean(r.id))
+    : []
+
+  return {
+    id,
+    title: String(data?.title ?? 'Timeline Konten'),
+    columns,
+    rows,
+    calendarConfig: typeof data?.calendarConfig === 'object' ? (data.calendarConfig as any) : undefined,
+    createdAt,
+    updatedAt,
+  }
+}
+
 function resetToEmpty() {
   snapshot = {
     employees: [],
@@ -193,6 +223,7 @@ function resetToEmpty() {
     transactions: [],
     productions: [],
     meetings: [],
+    contentSchedules: [],
     settings: { cashOpeningBalance: 0 },
   }
   metaReady = false
@@ -248,6 +279,7 @@ function startDataListeners() {
   const trxRef = collection(firestoreDb, 'transactions')
   const prodRef = collection(firestoreDb, 'productions')
   const meetingsRef = collection(firestoreDb, 'meetings')
+  const contentSchedulesRef = collection(firestoreDb, 'contentSchedules')
   const settingsRef = doc(firestoreDb, 'settings', 'app')
 
   const unsubEmployees = onSnapshot(
@@ -328,6 +360,19 @@ function startDataListeners() {
     (err) => handleListenerError('meetings', err)
   )
 
+  const unsubSchedules = onSnapshot(
+    query(contentSchedulesRef),
+    (qs) => {
+      snapshot = {
+        ...snapshot,
+        contentSchedules: qs.docs.map((d) => mapContentSchedule(d.id, d.data())),
+      }
+      markMetaReady()
+      notify()
+    },
+    (err) => handleListenerError('contentSchedules', err)
+  )
+
   const unsubSettings = onSnapshot(
     settingsRef,
     (ds) => {
@@ -344,7 +389,7 @@ function startDataListeners() {
     (err) => handleListenerError('settings/app', err)
   )
 
-  dataUnsubs = [unsubEmployees, unsubProducts, unsubStock, unsubTrx, unsubProd, unsubMeetings, unsubSettings]
+  dataUnsubs = [unsubEmployees, unsubProducts, unsubStock, unsubTrx, unsubProd, unsubMeetings, unsubSchedules, unsubSettings]
 }
 
 function stopDataListeners() {
@@ -655,6 +700,40 @@ export const repoFirebase = {
     async remove(id: string): Promise<void> {
       const firestoreDb = (db ??= getFirestoreDb())
       await deleteDoc(doc(firestoreDb, 'meetings', id))
+    },
+  },
+
+  contentSchedules: {
+    list(): ContentSchedule[] {
+      return snapshot.contentSchedules
+    },
+    async create(input: Omit<ContentSchedule, 'id' | 'createdAt' | 'updatedAt'>): Promise<ContentSchedule> {
+      const firestoreDb = (db ??= getFirestoreDb())
+      const now = isoNow()
+      const id = createId('sch')
+      const schedule: ContentSchedule = {
+        id,
+        title: input.title,
+        columns: Array.isArray(input.columns) ? input.columns : [],
+        rows: Array.isArray(input.rows) ? input.rows : [],
+        calendarConfig: input.calendarConfig,
+        createdAt: now,
+        updatedAt: now,
+      }
+      await setDoc(doc(firestoreDb, 'contentSchedules', id), schedule)
+      return schedule
+    },
+    async update(id: string, patch: Partial<Omit<ContentSchedule, 'id' | 'createdAt'>>): Promise<ContentSchedule> {
+      const firestoreDb = (db ??= getFirestoreDb())
+      const nextUpdatedAt = isoNow()
+      await updateDoc(doc(firestoreDb, 'contentSchedules', id), { ...patch, updatedAt: nextUpdatedAt } as any)
+      const current = snapshot.contentSchedules.find((x) => x.id === id)
+      if (!current) throw new Error('Timeline konten tidak ditemukan')
+      return { ...current, ...patch, updatedAt: nextUpdatedAt }
+    },
+    async remove(id: string): Promise<void> {
+      const firestoreDb = (db ??= getFirestoreDb())
+      await deleteDoc(doc(firestoreDb, 'contentSchedules', id))
     },
   },
 }

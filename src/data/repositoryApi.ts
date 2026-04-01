@@ -1,4 +1,4 @@
-import type { AppData, Employee, Product, ProductKind, Production, StockMovement, Transaction } from './types'
+import type { AppData, ContentSchedule, Employee, Product, ProductKind, Production, StockMovement, Transaction } from './types'
 import { apiRepo } from './api/apiRepository'
 import { getApiSnapshot, mutateAndRefresh } from './api/apiStore'
 
@@ -102,6 +102,25 @@ export const repoApi = {
   settings: {
     setCashOpeningBalance(value: number) {
       void mutateAndRefresh(() => apiRepo.settings.setCashOpeningBalance(value))
+    },
+  },
+
+  contentSchedules: {
+    list(): ContentSchedule[] {
+      return getApiSnapshot().contentSchedules
+    },
+    create(input: Omit<ContentSchedule, 'id' | 'createdAt' | 'updatedAt'>): ContentSchedule {
+      void input
+      throw new Error('API mode: fitur timeline konten belum tersedia (butuh endpoint backend).')
+    },
+    update(id: string, patch: Partial<Omit<ContentSchedule, 'id' | 'createdAt'>>): ContentSchedule {
+      void id
+      void patch
+      throw new Error('API mode: update timeline konten belum tersedia (butuh endpoint backend).')
+    },
+    remove(id: string) {
+      void id
+      throw new Error('API mode: hapus timeline konten belum tersedia (butuh endpoint backend).')
     },
   },
 }

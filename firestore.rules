@@ -105,6 +105,12 @@ service cloud.firestore {
       allow create, update, delete: if isStaff();
     }
 
+    // CONTENT SCHEDULES (timeline konten)
+    match /contentSchedules/{id} {
+      allow read: if isStaff();
+      allow create, update, delete: if isStaff();
+    }
+
     // SETTINGS
     match /settings/{docId} {
       allow read: if isStaff();

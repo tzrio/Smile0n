@@ -15,6 +15,7 @@ import { ProductionPage } from './pages/ProductionPage'
 import { FinancePage } from './pages/FinancePage'
 import { ProfilePage } from './pages/ProfilePage'
 import { MeetingsPage } from './pages/MeetingsPage'
+import { TimelineKontenPage } from './pages/TimelineKontenPage'
 
 export default function App() {
   return (
@@ -32,6 +33,7 @@ export default function App() {
           <Route path="production" element={<ProductionPage />} />
           <Route path="finance" element={<FinancePage />} />
           <Route path="meetings" element={<MeetingsPage />} />
+          <Route path="timeline-konten" element={<TimelineKontenPage />} />
           <Route path="profile" element={<ProfilePage />} />
           <Route path="*" element={<Navigate to="/app/dashboard" replace />} />
         </Route>
