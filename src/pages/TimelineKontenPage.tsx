@@ -45,6 +45,7 @@ type CalendarItem = {
   timeLabel: string
   title: string
   status: string
+  assignee: string
   rowId: string
 }
 
@@ -70,6 +71,7 @@ function buildDefaultSchedule(): Omit<ContentSchedule, 'id' | 'createdAt' | 'upd
       { id: 'col-tools', label: 'Tools' },
       { id: 'col-type', label: 'Jenis' },
       { id: 'col-idea', label: 'Ide' },
+      { id: 'col-assignee', label: 'Karyawan' },
       { id: 'col-status', label: 'Status' },
     ],
     rows: [
@@ -84,6 +86,7 @@ function buildDefaultSchedule(): Omit<ContentSchedule, 'id' | 'createdAt' | 'upd
           'col-tools': 'Canva',
           'col-type': 'Tutorial',
           'col-idea': 'Gradient aesthetic basic',
+          'col-assignee': '',
           'col-status': 'Belum upload',
         },
       },
@@ -98,6 +101,7 @@ function buildDefaultSchedule(): Omit<ContentSchedule, 'id' | 'createdAt' | 'upd
           'col-tools': 'Figma',
           'col-type': 'Tutorial',
           'col-idea': 'Button UI simple',
+          'col-assignee': '',
           'col-status': 'Belum upload',
         },
       },
@@ -112,6 +116,7 @@ function buildDefaultSchedule(): Omit<ContentSchedule, 'id' | 'createdAt' | 'upd
           'col-tools': 'Canva',
           'col-type': 'Recreate',
           'col-idea': 'Poster Islami improve',
+          'col-assignee': '',
           'col-status': 'Belum upload',
         },
       },
@@ -126,6 +131,7 @@ function buildDefaultSchedule(): Omit<ContentSchedule, 'id' | 'createdAt' | 'upd
           'col-tools': 'Figma',
           'col-type': 'Edukasi',
           'col-idea': '3 kesalahan UI pemula',
+          'col-assignee': '',
           'col-status': 'Belum upload',
         },
       },
@@ -140,6 +146,7 @@ function buildDefaultSchedule(): Omit<ContentSchedule, 'id' | 'createdAt' | 'upd
           'col-tools': 'Canva',
           'col-type': 'Original',
           'col-idea': 'Poster kopi kekinian',
+          'col-assignee': '',
           'col-status': 'Belum upload',
         },
       },
@@ -154,6 +161,7 @@ function buildDefaultSchedule(): Omit<ContentSchedule, 'id' | 'createdAt' | 'upd
           'col-tools': 'Figma',
           'col-type': 'Tutorial',
           'col-idea': 'Card UI clean',
+          'col-assignee': '',
           'col-status': 'Belum upload',
         },
       },
@@ -168,6 +176,7 @@ function buildDefaultSchedule(): Omit<ContentSchedule, 'id' | 'createdAt' | 'upd
           'col-tools': 'Canva',
           'col-type': 'Improve',
           'col-idea': 'Fix desain jelek',
+          'col-assignee': '',
           'col-status': 'Belum upload',
         },
       },
@@ -182,6 +191,7 @@ function buildDefaultSchedule(): Omit<ContentSchedule, 'id' | 'createdAt' | 'upd
           'col-tools': 'Canva',
           'col-type': 'Soft Sell',
           'col-idea': 'Template UMKM',
+          'col-assignee': '',
           'col-status': 'Belum upload',
         },
       },
@@ -190,6 +200,7 @@ function buildDefaultSchedule(): Omit<ContentSchedule, 'id' | 'createdAt' | 'upd
       dateColumnId: 'col-date',
       timeColumnId: 'col-time',
       titleColumnId: 'col-idea',
+      assigneeColumnId: 'col-assignee',
       statusColumnId: 'col-status',
     },
   }
@@ -300,6 +311,7 @@ export function TimelineKontenPage() {
   const timeColumnId = calendarConfig?.timeColumnId
   const titleColumnId = calendarConfig?.titleColumnId
   const statusColumnId = calendarConfig?.statusColumnId
+  const assigneeColumnId = calendarConfig?.assigneeColumnId
 
   const invalidDateCount = useMemo(() => {
     if (!dateColumnId) return 0
@@ -318,16 +330,18 @@ export function TimelineKontenPage() {
       const timeValue = timeColumnId ? row.values[timeColumnId] ?? '' : ''
       const titleValue = titleColumnId ? row.values[titleColumnId] ?? '' : ''
       const statusValue = statusColumnId ? row.values[statusColumnId] ?? '' : ''
+      const assigneeValue = assigneeColumnId ? row.values[assigneeColumnId] ?? '' : ''
       items.push({
         dateKey: dateValue,
         timeLabel: parseTime(timeValue),
         title: titleValue || '(Tanpa judul)',
         status: statusValue,
+        assignee: assigneeValue,
         rowId: row.id,
       })
     }
     return items
-  }, [rows, dateColumnId, timeColumnId, titleColumnId, statusColumnId])
+  }, [rows, dateColumnId, timeColumnId, titleColumnId, statusColumnId, assigneeColumnId])
 
   const calendarMap = useMemo(() => {
     const map = new Map<string, CalendarItem[]>()
@@ -391,6 +405,7 @@ export function TimelineKontenPage() {
     if (nextCalendar.timeColumnId === id) nextCalendar.timeColumnId = undefined
     if (nextCalendar.titleColumnId === id) nextCalendar.titleColumnId = undefined
     if (nextCalendar.statusColumnId === id) nextCalendar.statusColumnId = undefined
+    if (nextCalendar.assigneeColumnId === id) nextCalendar.assigneeColumnId = undefined
     markDirty({ ...draft, columns: nextColumns, rows: nextRows, calendarConfig: nextCalendar })
   }
 
@@ -462,6 +477,7 @@ export function TimelineKontenPage() {
       { header: 'Jam', value: (row) => row.timeLabel },
       { header: 'Judul', value: (row) => row.title },
       { header: 'Status', value: (row) => row.status },
+      { header: 'Karyawan', value: (row) => row.assignee },
     ])
   }
 
@@ -683,6 +699,20 @@ export function TimelineKontenPage() {
               ))}
             </Select>
           </div>
+          <div>
+            <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">Kolom karyawan</label>
+            <Select
+              value={assigneeColumnId ?? ''}
+              onChange={(e) => updateCalendarConfig({ assigneeColumnId: e.target.value || undefined })}
+            >
+              <option value="">- Pilih -</option>
+              {columns.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.label}
+                </option>
+              ))}
+            </Select>
+          </div>
         </div>
         {invalidDateCount > 0 && (
           <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
@@ -734,6 +764,7 @@ export function TimelineKontenPage() {
                       const isDate = c.id === dateColumnId
                       const isTime = c.id === timeColumnId
                       const isStatus = c.id === statusColumnId
+                      const isAssignee = c.id === assigneeColumnId
 
                       if (isStatus) {
                         return (
@@ -742,6 +773,21 @@ export function TimelineKontenPage() {
                               <option value="">- Pilih -</option>
                               <option value="Belum upload">Belum upload</option>
                               <option value="Sudah upload">Sudah upload</option>
+                            </Select>
+                          </td>
+                        )
+                      }
+
+                      if (isAssignee) {
+                        return (
+                          <td key={c.id} className="px-4 py-3">
+                            <Select value={value} onChange={(e) => updateCell(r.id, c.id, e.target.value)}>
+                              <option value="">- Pilih -</option>
+                              {data.employees.map((emp) => (
+                                <option key={emp.id} value={emp.name}>
+                                  {emp.name}
+                                </option>
+                              ))}
                             </Select>
                           </td>
                         )

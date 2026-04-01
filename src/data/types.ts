@@ -103,6 +103,7 @@ export type ContentScheduleCalendarConfig = {
   timeColumnId?: string
   titleColumnId?: string
   statusColumnId?: string
+  assigneeColumnId?: string
 }
 
 export type ContentSchedule = {
