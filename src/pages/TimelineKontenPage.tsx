@@ -251,6 +251,20 @@ function buildCalendarDays(year: number, monthIndex: number) {
   return days
 }
 
+function columnWidthClass(columnId: string) {
+  if (columnId === 'col-post') return 'min-w-[80px]'
+  if (columnId === 'col-time') return 'min-w-[120px]'
+  if (columnId === 'col-date') return 'min-w-[150px]'
+  if (columnId === 'col-day') return 'min-w-[120px]'
+  if (columnId === 'col-week') return 'min-w-[140px]'
+  if (columnId === 'col-tools') return 'min-w-[140px]'
+  if (columnId === 'col-type') return 'min-w-[150px]'
+  if (columnId === 'col-idea') return 'min-w-[220px]'
+  if (columnId === 'col-status') return 'min-w-[160px]'
+  if (columnId === 'col-assignee') return 'min-w-[180px]'
+  return 'min-w-[140px]'
+}
+
 export function TimelineKontenPage() {
   const data = useAppData()
   const meta = useRepoMeta()
@@ -736,15 +750,21 @@ export function TimelineKontenPage() {
         }
       >
         <div className="overflow-x-auto rounded-xl border border-gray-200/70 dark:border-white/10">
-          <table className="min-w-full divide-y divide-gray-200/70 text-sm dark:divide-white/10">
+          <table className="min-w-[1100px] divide-y divide-gray-200/70 text-sm dark:divide-white/10">
             <thead className="bg-gray-50 dark:bg-gray-950/40">
               <tr>
                 {columns.map((c) => (
-                  <th key={c.id} className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-300">
+                  <th
+                    key={c.id}
+                    className={[
+                      'px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-300',
+                      columnWidthClass(c.id),
+                    ].join(' ')}
+                  >
                     {c.label}
                   </th>
                 ))}
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-300">
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-300 min-w-[120px]">
                   Aksi
                 </th>
               </tr>
@@ -768,7 +788,7 @@ export function TimelineKontenPage() {
 
                       if (isStatus) {
                         return (
-                          <td key={c.id} className="px-4 py-3">
+                          <td key={c.id} className={["px-4 py-3", columnWidthClass(c.id)].join(' ')}>
                             <Select value={value} onChange={(e) => updateCell(r.id, c.id, e.target.value)}>
                               <option value="">- Pilih -</option>
                               <option value="Belum upload">Belum upload</option>
@@ -780,7 +800,7 @@ export function TimelineKontenPage() {
 
                       if (isAssignee) {
                         return (
-                          <td key={c.id} className="px-4 py-3">
+                          <td key={c.id} className={["px-4 py-3", columnWidthClass(c.id)].join(' ')}>
                             <Select value={value} onChange={(e) => updateCell(r.id, c.id, e.target.value)}>
                               <option value="">- Pilih -</option>
                               {data.employees.map((emp) => (
@@ -794,7 +814,7 @@ export function TimelineKontenPage() {
                       }
 
                       return (
-                        <td key={c.id} className="px-4 py-3">
+                        <td key={c.id} className={["px-4 py-3", columnWidthClass(c.id)].join(' ')}>
                           <Input
                             type={isDate ? 'date' : isTime ? 'time' : 'text'}
                             value={value}
@@ -911,6 +931,11 @@ export function TimelineKontenPage() {
                             )}
                           </div>
                           <div className="mt-1 line-clamp-2">{item.title}</div>
+                          {item.assignee && (
+                            <div className="mt-1 text-[10px] text-gray-500 dark:text-gray-400">
+                              {item.assignee}
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>
