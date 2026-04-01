@@ -11,6 +11,7 @@ import { useAppData } from '../data/useAppData'
 import { useRepoMeta } from '../data/useRepoMeta'
 import { repo } from '../data/repository'
 import type { ContentSchedule, ContentScheduleCalendarConfig, ContentScheduleColumn, ContentScheduleRow } from '../data/types'
+import { downloadCsv } from '../utils/csv'
 import { createId } from '../utils/id'
 
 const MONTHS = [
@@ -29,6 +30,7 @@ const MONTHS = [
 ]
 
 const WEEKDAYS = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min']
+const WEEKDAY_FULL = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu']
 
 type Draft = {
   id: string
@@ -197,6 +199,15 @@ function pad2(n: number) {
   return `${n}`.padStart(2, '0')
 }
 
+function toSlug(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/\s+/g, '-')
+    .replace(/[^a-z0-9-]/g, '')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+}
+
 function dateKeyFromParts(year: number, monthIndex: number, day: number) {
   return `${year}-${pad2(monthIndex + 1)}-${pad2(day)}`
 }
@@ -211,6 +222,12 @@ function parseTime(value: string): string {
   if (!value) return ''
   if (/^\d{2}:\d{2}$/.test(value)) return value
   return value
+}
+
+function weekdayLabel(dateKey: string) {
+  const d = new Date(`${dateKey}T00:00:00`)
+  if (Number.isNaN(d.getTime())) return ''
+  return WEEKDAY_FULL[d.getDay()] ?? ''
 }
 
 function buildCalendarDays(year: number, monthIndex: number) {
@@ -403,6 +420,49 @@ export function TimelineKontenPage() {
   function updateCalendarConfig(patch: Partial<ContentScheduleCalendarConfig>) {
     if (!draft) return
     markDirty({ ...draft, calendarConfig: { ...(draft.calendarConfig ?? {}), ...patch } })
+  }
+
+  function exportTableCsv() {
+    if (!draft) return
+    if (columns.length === 0) {
+      toast.info('Tidak ada kolom untuk diexport')
+      return
+    }
+    const filename = `timeline-konten-${toSlug(draft.title) || 'data'}`
+    downloadCsv(
+      filename,
+      rows,
+      columns.map((c) => ({
+        header: c.label,
+        value: (row) => row.values[c.id] ?? '',
+      }))
+    )
+  }
+
+  function exportCalendarCsv() {
+    if (!draft) return
+    if (!dateColumnId) {
+      toast.error('Kolom tanggal belum dipilih')
+      return
+    }
+    const monthKey = `${calendarYear}-${pad2(calendarMonth + 1)}`
+    const monthItems = calendarItems.filter((i) => i.dateKey.startsWith(monthKey))
+    if (monthItems.length === 0) {
+      toast.info('Tidak ada event di bulan ini')
+      return
+    }
+    const sorted = monthItems
+      .slice()
+      .sort((a, b) => `${a.dateKey} ${a.timeLabel}`.localeCompare(`${b.dateKey} ${b.timeLabel}`))
+
+    const filename = `kalender-konten-${toSlug(draft.title) || 'data'}-${monthKey}`
+    downloadCsv(filename, sorted, [
+      { header: 'Tanggal', value: (row) => row.dateKey },
+      { header: 'Hari', value: (row) => weekdayLabel(row.dateKey) },
+      { header: 'Jam', value: (row) => row.timeLabel },
+      { header: 'Judul', value: (row) => row.title },
+      { header: 'Status', value: (row) => row.status },
+    ])
   }
 
   async function saveChanges() {
@@ -635,9 +695,14 @@ export function TimelineKontenPage() {
         title="Tabel timeline"
         description="Edit isi jadwal, status upload, dan informasi lainnya."
         right={
-          <Button variant="secondary" onClick={addRow}>
-            Tambah baris
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="secondary" onClick={exportTableCsv}>
+              Export CSV
+            </Button>
+            <Button variant="secondary" onClick={addRow}>
+              Tambah baris
+            </Button>
+          </div>
         }
       >
         <div className="overflow-x-auto rounded-xl border border-gray-200/70 dark:border-white/10">
@@ -706,7 +771,15 @@ export function TimelineKontenPage() {
         </div>
       </Card>
 
-      <Card title="Kalender konten" description="Tampilan kalender dari data di tabel.">
+      <Card
+        title="Kalender konten"
+        description="Tampilan kalender dari data di tabel."
+        right={
+          <Button variant="secondary" onClick={exportCalendarCsv}>
+            Export CSV
+          </Button>
+        }
+      >
         {!dateColumnId ? (
           <EmptyState
             title="Kolom tanggal belum dipilih"
