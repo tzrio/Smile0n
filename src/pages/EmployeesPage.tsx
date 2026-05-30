@@ -2,6 +2,7 @@
  * Employees page:
  * - In Firebase mode: CEO approves roles (PENDING → CEO/CTO/CMO)
  * - In Local mode: edit employee position
+ * - CEO can delete employees (with confirmation)
  */
 import { useMemo, useState } from 'react'
 import { Button } from '../components/Button'
@@ -14,7 +15,7 @@ import { EmptyState } from '../components/EmptyState'
 import { useAuth } from '../auth/AuthContext'
 import { repo } from '../data/repository'
 import { useAppData } from '../data/useAppData'
-import { doc, updateDoc } from 'firebase/firestore'
+import { doc, updateDoc, deleteDoc } from 'firebase/firestore'
 import { getFirestoreDb } from '../firebase/firebase'
 import { isoNow } from '../utils/date'
 import { useToast } from '../app/ToastContext'
@@ -32,6 +33,7 @@ export function EmployeesPage() {
   // (No Cloud Functions / custom claims required.)
   const canManageEmployeesFirebase = auth.hasRole(['CEO']) && isFirebaseMode
   const canEditEmployeePositionLocal = auth.hasRole(['CEO']) && !isFirebaseMode
+  const canDeleteEmployee = auth.hasRole(['CEO'])
   const [error, setError] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
 
@@ -40,6 +42,8 @@ export function EmployeesPage() {
   const [roleEdits, setRoleEdits] = useState<Record<string, 'CEO' | 'CTO' | 'CMO' | 'PENDING'>>({})
   const [positionEdits, setPositionEdits] = useState<Record<string, string>>({})
   const [rowLoading, setRowLoading] = useState<Record<string, boolean>>({})
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
 
   async function saveEmployee(uid: string) {
     setError(null)
@@ -105,6 +109,59 @@ export function EmployeesPage() {
     }
   }
 
+  async function deleteEmployee(uid: string) {
+    setError(null)
+    if (!canDeleteEmployee) {
+      setError('Hanya CEO yang bisa menghapus karyawan')
+      return
+    }
+    if (auth.user?.id === uid) {
+      setError('Tidak bisa menghapus akun sendiri.')
+      toast.error('Tidak bisa menghapus akun sendiri.')
+      setConfirmDeleteId(null)
+      return
+    }
+
+    setDeletingId(uid)
+    try {
+      if (isFirebaseMode) {
+        // Deletes the users/{uid} document from Firestore.
+        // Note: This does NOT delete the Firebase Auth account (requires Admin SDK / Cloud Function).
+        // The user won't be able to access the app anymore because their role document is gone.
+        const db = getFirestoreDb()
+        await deleteDoc(doc(db, 'users', uid))
+      } else {
+        // Local mode: remove from local data
+        ;(repo as any).employees.remove
+          ? (repo as any).employees.remove(uid)
+          : (() => {
+              // Fallback: manually remove from local storage
+              const all = (repo as any).getAll()
+              const next = { ...all, employees: all.employees.filter((e: any) => e.id !== uid) }
+              ;(repo as any)._setAll?.(next)
+            })()
+      }
+      toast.success('Karyawan berhasil dihapus')
+      setConfirmDeleteId(null)
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Gagal menghapus karyawan'
+      setError(msg)
+      toast.error(msg)
+    } finally {
+      setDeletingId(null)
+    }
+  }
+
+  // Build table headers based on mode and role
+  const tableHeaders = useMemo(() => {
+    if (isFirebaseMode) {
+      if (auth.hasRole(['CEO'])) return ['Nama', 'Jabatan', 'ID', 'Role', 'Aksi']
+      return ['Nama', 'Jabatan', 'ID', 'Role']
+    }
+    if (canEditEmployeePositionLocal || canDeleteEmployee) return ['Nama', 'Jabatan', 'ID', 'Aksi']
+    return ['Nama', 'Jabatan', 'ID']
+  }, [isFirebaseMode, auth, canEditEmployeePositionLocal, canDeleteEmployee])
+
   return (
     <div className="space-y-6">
       <PageHeader title="Manajemen Profil Karyawan" subtitle="Kelola nama dan jabatan karyawan." />
@@ -127,17 +184,7 @@ export function EmployeesPage() {
             }
           />
         ) : (
-        <Table
-          headers={
-            isFirebaseMode
-              ? auth.hasRole(['CEO'])
-                ? ['Nama', 'Jabatan', 'ID', 'Role', 'Aksi']
-                : ['Nama', 'Jabatan', 'ID', 'Role']
-              : canEditEmployeePositionLocal
-                ? ['Nama', 'Jabatan', 'ID', 'Aksi']
-                : ['Nama', 'Jabatan', 'ID']
-          }
-        >
+        <Table headers={tableHeaders}>
           {employees.map((e) => (
             <tr key={e.id} className="hover:bg-gray-50 dark:hover:bg-white/5">
               <td className="px-4 py-2.5 text-gray-900 dark:text-gray-100">{e.name}</td>
@@ -180,24 +227,52 @@ export function EmployeesPage() {
 
                   {auth.hasRole(['CEO']) && (
                     <td className="px-4 py-2.5">
-                      <Button
-                        type="button"
-                        className="px-2 py-1 text-xs"
-                        onClick={() => void saveEmployee(e.id)}
-                        disabled={!!rowLoading[e.id]}
-                      >
-                        {rowLoading[e.id] ? '...' : 'Simpan'}
-                      </Button>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Button
+                          type="button"
+                          className="px-2 py-1 text-xs"
+                          onClick={() => void saveEmployee(e.id)}
+                          disabled={!!rowLoading[e.id]}
+                        >
+                          {rowLoading[e.id] ? '...' : 'Simpan'}
+                        </Button>
+                        {auth.user?.id !== e.id && (
+                          <Button
+                            type="button"
+                            variant="danger"
+                            className="px-2 py-1 text-xs"
+                            onClick={() => setConfirmDeleteId(e.id)}
+                            disabled={deletingId === e.id}
+                          >
+                            {deletingId === e.id ? '...' : 'Hapus'}
+                          </Button>
+                        )}
+                      </div>
                     </td>
                   )}
                 </>
               )}
 
-              {!isFirebaseMode && canEditEmployeePositionLocal && (
+              {!isFirebaseMode && (canEditEmployeePositionLocal || canDeleteEmployee) && (
                 <td className="px-4 py-2.5">
-                  <Button type="button" className="px-2 py-1 text-xs" onClick={() => savePositionLocal(e.id)}>
-                    Simpan
-                  </Button>
+                  <div className="flex flex-wrap items-center gap-2">
+                    {canEditEmployeePositionLocal && (
+                      <Button type="button" className="px-2 py-1 text-xs" onClick={() => savePositionLocal(e.id)}>
+                        Simpan
+                      </Button>
+                    )}
+                    {canDeleteEmployee && auth.user?.id !== e.id && (
+                      <Button
+                        type="button"
+                        variant="danger"
+                        className="px-2 py-1 text-xs"
+                        onClick={() => setConfirmDeleteId(e.id)}
+                        disabled={deletingId === e.id}
+                      >
+                        {deletingId === e.id ? '...' : 'Hapus'}
+                      </Button>
+                    )}
+                  </div>
                 </td>
               )}
             </tr>
@@ -205,6 +280,50 @@ export function EmployeesPage() {
         </Table>
         )}
       </Card>
+
+      {/* Delete confirmation dialog */}
+      {confirmDeleteId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <button
+            type="button"
+            className="absolute inset-0 bg-black/50"
+            aria-label="Batal"
+            onClick={() => setConfirmDeleteId(null)}
+          />
+          <div className="relative w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl ring-1 ring-gray-200/70 dark:bg-gray-900 dark:ring-white/10">
+            <div className="text-center">
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/30">
+                <svg viewBox="0 0 24 24" className="h-6 w-6 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M12 9v4M12 17h.01M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                </svg>
+              </div>
+              <h3 className="mt-3 text-base font-semibold text-gray-900 dark:text-gray-100">Hapus Karyawan?</h3>
+              <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
+                Karyawan <span className="font-semibold">{employees.find((x) => x.id === confirmDeleteId)?.name ?? confirmDeleteId}</span> akan dihapus.
+                {isFirebaseMode && ' Dokumen user di Firestore akan dihapus permanen.'}
+                {' '}Aksi ini tidak bisa dibatalkan.
+              </p>
+            </div>
+            <div className="mt-5 flex items-center justify-center gap-3">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => setConfirmDeleteId(null)}
+              >
+                Batal
+              </Button>
+              <Button
+                type="button"
+                variant="danger"
+                onClick={() => void deleteEmployee(confirmDeleteId)}
+                disabled={deletingId === confirmDeleteId}
+              >
+                {deletingId === confirmDeleteId ? 'Menghapus...' : 'Ya, Hapus'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

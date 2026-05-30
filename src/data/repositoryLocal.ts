@@ -100,6 +100,11 @@ export const repoLocal = {
       if (!updated) throw new Error('Karyawan tidak ditemukan')
       return updated
     },
+    remove(id: string): void {
+      commit((d) => {
+        d.employees = d.employees.filter((e) => e.id !== id)
+      })
+    },
   },
 
   products: {

@@ -252,17 +252,17 @@ function buildCalendarDays(year: number, monthIndex: number) {
 }
 
 function columnWidthClass(columnId: string) {
-  if (columnId === 'col-post') return 'min-w-[80px]'
-  if (columnId === 'col-time') return 'min-w-[120px]'
-  if (columnId === 'col-date') return 'min-w-[150px]'
-  if (columnId === 'col-day') return 'min-w-[120px]'
-  if (columnId === 'col-week') return 'min-w-[140px]'
-  if (columnId === 'col-tools') return 'min-w-[140px]'
-  if (columnId === 'col-type') return 'min-w-[150px]'
-  if (columnId === 'col-idea') return 'min-w-[220px]'
-  if (columnId === 'col-status') return 'min-w-[160px]'
-  if (columnId === 'col-assignee') return 'min-w-[180px]'
-  return 'min-w-[140px]'
+  if (columnId === 'col-post') return 'min-w-[60px]'
+  if (columnId === 'col-time') return 'min-w-[100px]'
+  if (columnId === 'col-date') return 'min-w-[130px]'
+  if (columnId === 'col-day') return 'min-w-[100px]'
+  if (columnId === 'col-week') return 'min-w-[110px]'
+  if (columnId === 'col-tools') return 'min-w-[110px]'
+  if (columnId === 'col-type') return 'min-w-[120px]'
+  if (columnId === 'col-idea') return 'min-w-[180px]'
+  if (columnId === 'col-status') return 'min-w-[130px]'
+  if (columnId === 'col-assignee') return 'min-w-[140px]'
+  return 'min-w-[110px]'
 }
 
 export function TimelineKontenPage() {
@@ -642,12 +642,14 @@ export function TimelineKontenPage() {
           </Button>
         }
       >
-        <div className="space-y-3">
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
           {columns.map((c) => (
-            <div key={c.id} className="grid gap-2 md:grid-cols-[1fr_auto] md:items-center">
-              <Input value={c.label} onChange={(e) => updateColumnLabel(c.id, e.target.value)} />
-              <Button variant="danger" onClick={() => removeColumn(c.id)}>
-                Hapus
+            <div key={c.id} className="flex items-center gap-2">
+              <div className="min-w-0 flex-1">
+                <Input value={c.label} onChange={(e) => updateColumnLabel(c.id, e.target.value)} />
+              </div>
+              <Button variant="danger" className="shrink-0 px-2 py-1 text-xs" onClick={() => removeColumn(c.id)}>
+                ×
               </Button>
             </div>
           ))}
@@ -750,7 +752,7 @@ export function TimelineKontenPage() {
         }
       >
         <div className="overflow-x-auto rounded-xl border border-gray-200/70 dark:border-white/10">
-          <table className="min-w-[1100px] divide-y divide-gray-200/70 text-sm dark:divide-white/10">
+          <table className="min-w-[900px] divide-y divide-gray-200/70 text-sm dark:divide-white/10">
             <thead className="bg-gray-50 dark:bg-gray-950/40">
               <tr>
                 {columns.map((c) => (
