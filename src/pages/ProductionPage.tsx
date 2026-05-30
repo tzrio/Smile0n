@@ -297,15 +297,15 @@ export function ProductionPage() {
               const emp = data.employees.find((x) => x.id === p.responsibleEmployeeId)
               return (
                 <tr key={p.id} className="hover:bg-gray-50 dark:hover:bg-white/5">
-                  <td className="px-5 py-3 text-gray-700 dark:text-gray-300">{formatDate(p.date)}</td>
-                  <td className="px-5 py-3 text-gray-900 dark:text-gray-100">{raw?.name ?? p.rawProductId}</td>
-                  <td className="px-5 py-3 text-gray-700 dark:text-gray-300">{p.rawQuantity}</td>
-                  <td className="px-5 py-3 text-gray-900 dark:text-gray-100">{fin?.name ?? p.finishedProductId}</td>
-                  <td className="px-5 py-3 text-gray-700 dark:text-gray-300">{p.finishedQuantity}</td>
-                  <td className="px-5 py-3 text-gray-700 dark:text-gray-300">{emp?.name ?? p.responsibleEmployeeId}</td>
-                  <td className="px-5 py-3 text-gray-700 dark:text-gray-300">{p.notes ?? '-'}</td>
+                  <td className="px-4 py-2.5 text-gray-700 dark:text-gray-300">{formatDate(p.date)}</td>
+                  <td className="px-4 py-2.5 text-gray-900 dark:text-gray-100">{raw?.name ?? p.rawProductId}</td>
+                  <td className="px-4 py-2.5 text-gray-700 dark:text-gray-300">{p.rawQuantity}</td>
+                  <td className="px-4 py-2.5 text-gray-900 dark:text-gray-100">{fin?.name ?? p.finishedProductId}</td>
+                  <td className="px-4 py-2.5 text-gray-700 dark:text-gray-300">{p.finishedQuantity}</td>
+                  <td className="px-4 py-2.5 text-gray-700 dark:text-gray-300">{emp?.name ?? p.responsibleEmployeeId}</td>
+                  <td className="px-4 py-2.5 text-gray-700 dark:text-gray-300">{p.notes ?? '-'}</td>
                   {canDeleteHistory && (
-                    <td className="px-5 py-3">
+                    <td className="px-4 py-2.5">
                       <Button
                         type="button"
                         variant="danger"

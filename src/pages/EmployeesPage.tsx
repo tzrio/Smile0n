@@ -140,8 +140,8 @@ export function EmployeesPage() {
         >
           {employees.map((e) => (
             <tr key={e.id} className="hover:bg-gray-50 dark:hover:bg-white/5">
-              <td className="px-5 py-3 text-gray-900 dark:text-gray-100">{e.name}</td>
-              <td className="px-5 py-3 text-gray-700 dark:text-gray-300">
+              <td className="px-4 py-2.5 text-gray-900 dark:text-gray-100">{e.name}</td>
+              <td className="px-4 py-2.5 text-gray-700 dark:text-gray-300">
                 {isFirebaseMode && auth.hasRole(['CEO']) ? (
                   <Input
                     value={positionEdits[e.id] ?? e.position}
@@ -158,11 +158,11 @@ export function EmployeesPage() {
                   e.position
                 )}
               </td>
-              <td className="px-5 py-3 font-mono text-xs text-gray-600 dark:text-gray-400">{e.id}</td>
+              <td className="px-4 py-2.5 font-mono text-xs text-gray-600 dark:text-gray-400">{e.id}</td>
 
               {isFirebaseMode && (
                 <>
-                  <td className="px-5 py-3">
+                  <td className="px-4 py-2.5">
                     {auth.hasRole(['CEO']) ? (
                       <Select
                         value={roleEdits[e.id] ?? (((e as any).role as any) ?? 'PENDING')}
@@ -179,7 +179,7 @@ export function EmployeesPage() {
                   </td>
 
                   {auth.hasRole(['CEO']) && (
-                    <td className="px-5 py-3">
+                    <td className="px-4 py-2.5">
                       <Button
                         type="button"
                         className="px-2 py-1 text-xs"
@@ -194,7 +194,7 @@ export function EmployeesPage() {
               )}
 
               {!isFirebaseMode && canEditEmployeePositionLocal && (
-                <td className="px-5 py-3">
+                <td className="px-4 py-2.5">
                   <Button type="button" className="px-2 py-1 text-xs" onClick={() => savePositionLocal(e.id)}>
                     Simpan
                   </Button>

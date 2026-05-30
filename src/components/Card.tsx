@@ -15,7 +15,7 @@ export function Card({ title, description, right, children }: Props) {
   return (
     <section className="rounded-xl bg-white shadow-sm ring-1 ring-gray-200/70 dark:bg-gray-900 dark:ring-white/10">
       {(title || description || right) && (
-        <header className="flex items-start justify-between gap-4 border-b border-gray-200/70 px-5 py-4 dark:border-white/10">
+        <header className="flex items-start justify-between gap-4 border-b border-gray-200/70 px-4 py-3.5 dark:border-white/10 sm:px-5 sm:py-4">
           <div>
             {title && <h2 className="text-sm font-semibold tracking-tight text-gray-900 dark:text-gray-100">{title}</h2>}
             {description && <p className="mt-1 text-xs leading-5 text-gray-600 dark:text-gray-300">{description}</p>}
@@ -23,7 +23,7 @@ export function Card({ title, description, right, children }: Props) {
           {right}
         </header>
       )}
-      <div className="px-5 py-4">{children}</div>
+      <div className="px-4 py-3.5 sm:px-5 sm:py-4">{children}</div>
     </section>
   )
 }

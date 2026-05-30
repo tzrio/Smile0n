@@ -426,7 +426,7 @@ export function AppShell() {
             </div>
           </aside>
 
-          <main className="p-4 pb-24 md:p-8 md:pb-8">
+          <main className="p-4 pb-24 md:p-6 md:pb-6">
             <div className="rounded-2xl">
               <Outlet />
             </div>

@@ -435,19 +435,19 @@ export function InventoryPage() {
           <Table headers={['Produk', 'Kategori', 'Keterangan', 'Stok Masuk', 'Stok Keluar', 'Sisa Stok', 'Aksi']}>
             {stockRows.map((r) => (
               <tr key={r.product.id} className="hover:bg-gray-50 dark:hover:bg-white/5">
-                <td className="px-5 py-3 text-gray-900 dark:text-gray-100">
+                <td className="px-4 py-2.5 text-gray-900 dark:text-gray-100">
                   {editingProductId === r.product.id ? (
                     <Input value={editingProductName} onChange={(e) => setEditingProductName(e.target.value)} />
                   ) : (
                     r.product.name
                   )}
                 </td>
-                <td className="px-5 py-3 text-gray-700 dark:text-gray-300">{r.product.category}</td>
-                <td className="px-5 py-3 text-gray-700 dark:text-gray-300">{productKindLabel(r.product.kind)}</td>
-                <td className="px-5 py-3 text-gray-700 dark:text-gray-300">{r.stockIn}</td>
-                <td className="px-5 py-3 text-gray-700 dark:text-gray-300">{r.stockOut}</td>
-                <td className="px-5 py-3 font-semibold text-gray-900 dark:text-gray-100">{r.remaining}</td>
-                <td className="px-5 py-3">
+                <td className="px-4 py-2.5 text-gray-700 dark:text-gray-300">{r.product.category}</td>
+                <td className="px-4 py-2.5 text-gray-700 dark:text-gray-300">{productKindLabel(r.product.kind)}</td>
+                <td className="px-4 py-2.5 text-gray-700 dark:text-gray-300">{r.stockIn}</td>
+                <td className="px-4 py-2.5 text-gray-700 dark:text-gray-300">{r.stockOut}</td>
+                <td className="px-4 py-2.5 font-semibold text-gray-900 dark:text-gray-100">{r.remaining}</td>
+                <td className="px-4 py-2.5">
                   <div className="flex flex-wrap gap-2">
                     {editingProductId === r.product.id ? (
                       <>
@@ -551,13 +551,13 @@ export function InventoryPage() {
               const emp = data.employees.find((x) => x.id === m.responsibleEmployeeId)
               return (
                 <tr key={m.id} className="hover:bg-gray-50 dark:hover:bg-white/5">
-                  <td className="px-5 py-3 text-gray-700 dark:text-gray-300">{formatDate(m.date)}</td>
-                  <td className="px-5 py-3 text-gray-900 dark:text-gray-100">{p?.name ?? m.productId}</td>
-                  <td className="px-5 py-3 text-gray-700 dark:text-gray-300">{m.type === 'IN' ? 'Masuk' : 'Keluar'}</td>
-                  <td className="px-5 py-3 text-gray-700 dark:text-gray-300">{m.quantity}</td>
-                  <td className="px-5 py-3 text-gray-700 dark:text-gray-300">{emp?.name ?? m.responsibleEmployeeId}</td>
+                  <td className="px-4 py-2.5 text-gray-700 dark:text-gray-300">{formatDate(m.date)}</td>
+                  <td className="px-4 py-2.5 text-gray-900 dark:text-gray-100">{p?.name ?? m.productId}</td>
+                  <td className="px-4 py-2.5 text-gray-700 dark:text-gray-300">{m.type === 'IN' ? 'Masuk' : 'Keluar'}</td>
+                  <td className="px-4 py-2.5 text-gray-700 dark:text-gray-300">{m.quantity}</td>
+                  <td className="px-4 py-2.5 text-gray-700 dark:text-gray-300">{emp?.name ?? m.responsibleEmployeeId}</td>
                   {canDeleteHistory && (
-                    <td className="px-5 py-3">
+                    <td className="px-4 py-2.5">
                       <Button
                         type="button"
                         variant="danger"

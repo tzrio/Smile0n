@@ -355,8 +355,8 @@ export function MeetingsPage() {
                   return (
                     <Fragment key={m.id}>
                       <tr className="bg-white dark:bg-gray-900">
-                        <td className="px-5 py-3 text-sm text-gray-700 dark:text-gray-300">{formatDateTime(m.startAt)}</td>
-                        <td className="px-5 py-3 text-sm font-semibold text-gray-900 dark:text-gray-100">
+                        <td className="px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300">{formatDateTime(m.startAt)}</td>
+                        <td className="px-4 py-2.5 text-sm font-semibold text-gray-900 dark:text-gray-100">
                           <button
                             type="button"
                             className="text-left hover:underline"
@@ -365,11 +365,11 @@ export function MeetingsPage() {
                             {m.title}
                           </button>
                         </td>
-                        <td className="px-5 py-3 text-sm text-gray-700 dark:text-gray-300">{m.location || '-'}</td>
-                        <td className="px-5 py-3 text-sm text-gray-700 dark:text-gray-300">
+                        <td className="px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300">{m.location || '-'}</td>
+                        <td className="px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300">
                           {counts.HADIR}/{m.attendance.length}
                         </td>
-                        <td className="px-5 py-3 text-sm">
+                        <td className="px-4 py-2.5 text-sm">
                           <div className="flex items-center justify-end gap-2">
                             <Button
                               variant="secondary"

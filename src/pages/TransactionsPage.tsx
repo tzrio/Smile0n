@@ -450,13 +450,13 @@ export function TransactionsPage() {
             return (
               <Fragment key={t.id}>
                 <tr className="hover:bg-gray-50 dark:hover:bg-white/5">
-                  <td className="px-5 py-3 text-gray-700 dark:text-gray-300">{formatDate(t.date)}</td>
-                  <td className="px-5 py-3 text-gray-700 dark:text-gray-300">{t.type === 'PURCHASE' ? 'Pembelian' : 'Penjualan'}</td>
-                  <td className="px-5 py-3 text-gray-900 dark:text-gray-100">{t.description}</td>
-                  <td className="px-5 py-3 text-gray-700 dark:text-gray-300">{hasItems ? `${t.items!.length} item` : '-'}</td>
-                  <td className="px-5 py-3 text-gray-700 dark:text-gray-300">{formatIDR(t.amount)}</td>
-                  <td className="px-5 py-3 text-gray-700 dark:text-gray-300">{emp?.name ?? t.responsibleEmployeeId}</td>
-                  <td className="px-5 py-3">
+                  <td className="px-4 py-2.5 text-gray-700 dark:text-gray-300">{formatDate(t.date)}</td>
+                  <td className="px-4 py-2.5 text-gray-700 dark:text-gray-300">{t.type === 'PURCHASE' ? 'Pembelian' : 'Penjualan'}</td>
+                  <td className="px-4 py-2.5 text-gray-900 dark:text-gray-100">{t.description}</td>
+                  <td className="px-4 py-2.5 text-gray-700 dark:text-gray-300">{hasItems ? `${t.items!.length} item` : '-'}</td>
+                  <td className="px-4 py-2.5 text-gray-700 dark:text-gray-300">{formatIDR(t.amount)}</td>
+                  <td className="px-4 py-2.5 text-gray-700 dark:text-gray-300">{emp?.name ?? t.responsibleEmployeeId}</td>
+                  <td className="px-4 py-2.5">
                     <div className="flex flex-wrap gap-2">
                       <Button
                         type="button"
@@ -488,7 +488,7 @@ export function TransactionsPage() {
                 </tr>
                 {expanded && hasItems && (
                   <tr className="bg-gray-50/60 dark:bg-gray-950/40">
-                    <td className="px-5 py-3" colSpan={7}>
+                    <td className="px-4 py-2.5" colSpan={7}>
                       <div className="rounded-lg border border-gray-200 bg-white p-3 dark:border-white/10 dark:bg-gray-900">
                         <div className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Item Transaksi</div>
                         <div className="mt-2 overflow-x-auto">
