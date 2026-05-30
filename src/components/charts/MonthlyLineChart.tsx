@@ -23,7 +23,7 @@ export function MonthlyLineChart({ months, series }: Props) {
 
   if (!months.length || !series.length || !hasData) {
     return (
-      <div className="flex h-64 items-center justify-center rounded-xl bg-gradient-to-br from-white to-indigo-50 text-sm text-gray-600 ring-1 ring-gray-200/70 dark:from-gray-900 dark:to-gray-950 dark:text-gray-300 dark:ring-white/10">
+      <div className="flex h-52 items-center justify-center rounded-xl bg-gradient-to-br from-white to-indigo-50 text-sm text-gray-600 ring-1 ring-gray-200/70 dark:from-gray-900 dark:to-gray-950 dark:text-gray-300 dark:ring-white/10 lg:h-64">
         Belum ada data untuk ditampilkan.
       </div>
     )
@@ -78,7 +78,7 @@ export function MonthlyLineChart({ months, series }: Props) {
   }
 
   return (
-    <div className="h-64">
+    <div className="h-52 lg:h-64">
       <Line data={data} options={options} />
     </div>
   )

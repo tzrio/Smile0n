@@ -26,14 +26,14 @@ export function DashboardPage() {
         subtitle="Ringkasan operasional, stok, transaksi, dan laporan sederhana."
       />
 
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatCard label="Total Penjualan" value={formatIDR(finance.totalSales)} />
         <StatCard label="Total Pembelian" value={formatIDR(finance.totalPurchases)} />
         <StatCard label="Untung / Rugi" value={formatIDR(finance.profit)} />
         <StatCard label="Saldo Kas Saat Ini" value={formatIDR(finance.cashBalance)} hint="Saldo pembukaan + (penjualan - pembelian)" />
       </div>
 
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
         <StatCard label="Jumlah Produk (Unit siap jual)" value={`${totalRemainingStock}`} hint="Total unit sisa barang jadi" />
         <StatCard label="Jumlah Produk Jadi (SKU)" value={`${totalFinishedSkus}`} />
         <StatCard label="Jumlah Karyawan" value={`${totalEmployees}`} />

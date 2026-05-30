@@ -19,7 +19,7 @@ export function MonthlyBarChart({ months, label, data }: Props) {
 
   if (!months.length || !data.length || !hasData) {
     return (
-      <div className="flex h-64 items-center justify-center rounded-xl bg-gradient-to-br from-white to-indigo-50 text-sm text-gray-600 ring-1 ring-gray-200/70 dark:from-gray-900 dark:to-gray-950 dark:text-gray-300 dark:ring-white/10">
+      <div className="flex h-52 items-center justify-center rounded-xl bg-gradient-to-br from-white to-indigo-50 text-sm text-gray-600 ring-1 ring-gray-200/70 dark:from-gray-900 dark:to-gray-950 dark:text-gray-300 dark:ring-white/10 lg:h-64">
         Belum ada data untuk ditampilkan.
       </div>
     )
@@ -59,7 +59,7 @@ export function MonthlyBarChart({ months, label, data }: Props) {
   }
 
   return (
-    <div className="h-64">
+    <div className="h-52 lg:h-64">
       <Bar data={chartData} options={options} />
     </div>
   )

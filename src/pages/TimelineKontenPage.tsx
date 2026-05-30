@@ -655,7 +655,7 @@ export function TimelineKontenPage() {
       </Card>
 
       <Card title="Konfigurasi kalender" description="Pilih kolom mana yang dipakai untuk kalender bulanan.">
-        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
           <div>
             <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">Kolom tanggal</label>
             <Select
@@ -879,48 +879,93 @@ export function TimelineKontenPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-7 gap-2 text-xs font-semibold text-gray-500">
-              {WEEKDAYS.map((d) => (
-                <div key={d} className="text-center">
-                  {d}
-                </div>
-              ))}
+            {/* Desktop: calendar grid */}
+            <div className="hidden md:block">
+              <div className="grid grid-cols-7 gap-1.5 text-xs font-semibold text-gray-500">
+                {WEEKDAYS.map((d) => (
+                  <div key={d} className="text-center">
+                    {d}
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-1 grid grid-cols-7 gap-1.5">
+                {calendarDays.map((day, idx) => {
+                  if (!day) {
+                    return <div key={`empty-${idx}`} className="min-h-[90px] rounded-lg bg-gray-50 dark:bg-gray-950/40" />
+                  }
+                  const dateKey = dateKeyFromParts(calendarYear, calendarMonth, day)
+                  const items = calendarMap.get(dateKey) ?? []
+                  const todayKey = parseDateKey(new Date().toISOString().slice(0, 10))
+                  const isToday = todayKey === dateKey
+
+                  return (
+                    <div key={dateKey} className="min-h-[90px] rounded-lg border border-gray-200/70 bg-white p-1.5 text-xs shadow-sm dark:border-white/10 dark:bg-gray-900">
+                      <div className="flex items-center justify-between">
+                        <div className={[
+                          'text-xs font-semibold',
+                          isToday ? 'text-indigo-600' : 'text-gray-700 dark:text-gray-200',
+                        ].join(' ')}>
+                          {day}
+                        </div>
+                        {items.length > 0 && (
+                          <span className="rounded-full bg-indigo-100 px-1.5 py-0.5 text-[10px] font-semibold text-indigo-700">
+                            {items.length}
+                          </span>
+                        )}
+                      </div>
+                      <div className="mt-1 space-y-1">
+                        {items.map((item) => (
+                          <div key={item.rowId} className="rounded-md border border-gray-200/60 bg-gray-50 px-1.5 py-1 text-[10px] text-gray-700 dark:border-white/10 dark:bg-gray-950/40 dark:text-gray-200">
+                            <div className="flex items-center justify-between gap-1">
+                              <span className="font-semibold">{item.timeLabel || '--:--'}</span>
+                              {item.status && (
+                                <span
+                                  className={[
+                                    'shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-semibold',
+                                    item.status === 'Sudah upload'
+                                      ? 'bg-emerald-100 text-emerald-700'
+                                      : 'bg-amber-100 text-amber-700',
+                                  ].join(' ')}
+                                >
+                                  {item.status === 'Sudah upload' ? '✓' : '○'}
+                                </span>
+                              )}
+                            </div>
+                            <div className="mt-0.5 line-clamp-2 leading-tight">{item.title}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
             </div>
 
-            <div className="grid grid-cols-7 gap-2">
-              {calendarDays.map((day, idx) => {
-                if (!day) {
-                  return <div key={`empty-${idx}`} className="min-h-[110px] rounded-lg bg-gray-50 dark:bg-gray-950/40" />
-                }
-                const dateKey = dateKeyFromParts(calendarYear, calendarMonth, day)
-                const items = calendarMap.get(dateKey) ?? []
-                const todayKey = parseDateKey(new Date().toISOString().slice(0, 10))
-                const isToday = todayKey === dateKey
-
-                return (
-                  <div key={dateKey} className="min-h-[110px] rounded-lg border border-gray-200/70 bg-white p-2 text-xs shadow-sm dark:border-white/10 dark:bg-gray-900">
-                    <div className="flex items-center justify-between">
-                      <div className={[
-                        'text-xs font-semibold',
-                        isToday ? 'text-indigo-600' : 'text-gray-700 dark:text-gray-200',
-                      ].join(' ')}>
-                        {day}
-                      </div>
-                      {items.length > 0 && (
-                        <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-semibold text-indigo-700">
-                          {items.length}
-                        </span>
-                      )}
-                    </div>
-                    <div className="mt-2 space-y-2">
-                      {items.map((item) => (
-                        <div key={item.rowId} className="rounded-md border border-gray-200/60 bg-gray-50 px-2 py-1 text-[11px] text-gray-700 dark:border-white/10 dark:bg-gray-950/40 dark:text-gray-200">
-                          <div className="flex items-center justify-between">
-                            <span className="font-semibold">{item.timeLabel || '--:--'}</span>
+            {/* Mobile: list view of events */}
+            <div className="md:hidden">
+              {calendarItems.filter((i) => i.dateKey.startsWith(`${calendarYear}-${pad2(calendarMonth + 1)}`)).length === 0 ? (
+                <div className="rounded-lg bg-gray-50 px-4 py-6 text-center text-sm text-gray-500 dark:bg-gray-950/40 dark:text-gray-400">
+                  Tidak ada event di bulan ini.
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {calendarItems
+                    .filter((i) => i.dateKey.startsWith(`${calendarYear}-${pad2(calendarMonth + 1)}`))
+                    .sort((a, b) => `${a.dateKey} ${a.timeLabel}`.localeCompare(`${b.dateKey} ${b.timeLabel}`))
+                    .map((item) => (
+                      <div key={item.rowId} className="flex items-start gap-3 rounded-lg border border-gray-200/70 bg-white p-3 dark:border-white/10 dark:bg-gray-900">
+                        <div className="flex shrink-0 flex-col items-center rounded-lg bg-indigo-50 px-2.5 py-1.5 dark:bg-indigo-950/40">
+                          <span className="text-lg font-bold text-indigo-700 dark:text-indigo-300">{item.dateKey.slice(-2)}</span>
+                          <span className="text-[10px] font-medium text-indigo-600 dark:text-indigo-400">{weekdayLabel(item.dateKey).slice(0, 3)}</span>
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">{item.title}</span>
                             {item.status && (
                               <span
                                 className={[
-                                  'rounded-full px-2 py-0.5 text-[10px] font-semibold',
+                                  'shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold',
                                   item.status === 'Sudah upload'
                                     ? 'bg-emerald-100 text-emerald-700'
                                     : 'bg-amber-100 text-amber-700',
@@ -930,18 +975,15 @@ export function TimelineKontenPage() {
                               </span>
                             )}
                           </div>
-                          <div className="mt-1 line-clamp-2">{item.title}</div>
-                          {item.assignee && (
-                            <div className="mt-1 text-[10px] text-gray-500 dark:text-gray-400">
-                              {item.assignee}
-                            </div>
-                          )}
+                          <div className="mt-1 flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
+                            <span>{item.timeLabel || '--:--'}</span>
+                            {item.assignee && <span>• {item.assignee}</span>}
+                          </div>
                         </div>
-                      ))}
-                    </div>
-                  </div>
-                )
-              })}
+                      </div>
+                    ))}
+                </div>
+              )}
             </div>
           </div>
         )}
